@@ -63,19 +63,19 @@ void	Exti_config(void)
 	Exti_InitStructure.EXTI_Priority  = Priority_0;		//指定中断优先级(低到高) Priority_0,Priority_1,Priority_2,Priority_3
 	Ext_Inilize(EXT_INT0,&Exti_InitStructure);				//初始化
 
-	Exti_InitStructure.EXTI_Interrupt = ENABLE;				//中断使能,   ENABLE或DISABLE
-	Exti_InitStructure.EXTI_Mode      = EXT_MODE_Fall;//中断模式,   EXT_MODE_RiseFall,EXT_MODE_Fall
-	Exti_InitStructure.EXTI_Priority  = Priority_0;		//指定中断优先级(低到高) Priority_0,Priority_1,Priority_2,Priority_3
-	Ext_Inilize(EXT_INT1,&Exti_InitStructure);				//初始化
+//	Exti_InitStructure.EXTI_Interrupt = ENABLE;				//中断使能,   ENABLE或DISABLE
+//	Exti_InitStructure.EXTI_Mode      = EXT_MODE_RiseFall;//中断模式,   EXT_MODE_RiseFall,EXT_MODE_Fall
+//	Exti_InitStructure.EXTI_Priority  = Priority_0;		//指定中断优先级(低到高) Priority_0,Priority_1,Priority_2,Priority_3
+//	Ext_Inilize(EXT_INT1,&Exti_InitStructure);				//初始化
 
-	Exti_InitStructure.EXTI_Interrupt = ENABLE;				//中断使能,   ENABLE或DISABLE
-	Ext_Inilize(EXT_INT2,&Exti_InitStructure);				//初始化
+//	Exti_InitStructure.EXTI_Interrupt = ENABLE;				//中断使能,   ENABLE或DISABLE
+//	Ext_Inilize(EXT_INT2,&Exti_InitStructure);				//初始化
 
-	Exti_InitStructure.EXTI_Interrupt = ENABLE;				//中断使能,   ENABLE或DISABLE
-	Ext_Inilize(EXT_INT3,&Exti_InitStructure);				//初始化
+//	Exti_InitStructure.EXTI_Interrupt = ENABLE;				//中断使能,   ENABLE或DISABLE
+//	Ext_Inilize(EXT_INT3,&Exti_InitStructure);				//初始化
 
-	Exti_InitStructure.EXTI_Interrupt = ENABLE;				//中断使能,   ENABLE或DISABLE
-	Ext_Inilize(EXT_INT4,&Exti_InitStructure);				//初始化
+//	Exti_InitStructure.EXTI_Interrupt = ENABLE;				//中断使能,   ENABLE或DISABLE
+//	Ext_Inilize(EXT_INT4,&Exti_InitStructure);				//初始化
 }
 
 /****************  串口初始化函数 *****************/
@@ -106,18 +106,24 @@ void main(void)
 	while(1)
 	{
 		while(!INT0);	//等待外中断为高电平
-		while(!INT1);	//等待外中断为高电平
-		while(!INT2);	//等待外中断为高电平
-		while(!INT3);	//等待外中断为高电平
-		while(!INT4);	//等待外中断为高电平
+		PrintString1("INT0  ");
+//		while(INT1);	//等待外中断为高电平
+//		PrintString1("INT1  ");
+//		while(!INT2);	//等待外中断为高电平
+//		PrintString1("INT2  ");
+//		while(!INT3);	//等待外中断为高电平
+//		PrintString1("INT3  ");
+//		while(!INT4);	//等待外中断为高电平
+//		PrintString1("INT4  ");
 		delay_ms(10);	//delay 10ms
 
 		while(!INT0);	//等待外中断为高电平
-		while(!INT1);	//等待外中断为高电平
-		while(!INT2);	//等待外中断为高电平
-		while(!INT3);	//等待外中断为高电平
-		while(!INT4);	//等待外中断为高电平
+//		while(INT1);	//等待外中断为高电平
+//		while(!INT2);	//等待外中断为高电平
+//		while(!INT3);	//等待外中断为高电平
+//		while(!INT4);	//等待外中断为高电平
 		delay_ms(10);	//delay 10ms
+		PrintString1("SLEEP  ");
 
 		Exti_config();
 		WakeUpSource = 0;
