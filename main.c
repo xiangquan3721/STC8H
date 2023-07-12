@@ -61,7 +61,7 @@ ADC说明:
 u8 WakeUpSource;
 u8 WakeUpCnt;
 u16	Vdc,Nref;
-u8 Flag_LED1_ALARM,Flag_LED2_ALARM,Flag_power_Low;
+u8 Flag_LED1_ALARM_step,Flag_LED2_ALARM_step,Flag_power_Low;
 /*************	本地函数声明	**************/
 
 
@@ -93,7 +93,7 @@ void	Timer_config(void)
 	TIM_InitStructure.TIM_Interrupt = ENABLE;					//中断是否允许,   ENABLE或DISABLE
 	TIM_InitStructure.TIM_ClkSource = TIM_CLOCK_1T;		//指定时钟源,     TIM_CLOCK_1T,TIM_CLOCK_12T,TIM_CLOCK_Ext
 	TIM_InitStructure.TIM_ClkOut    = DISABLE;				//是否输出高速脉冲, ENABLE或DISABLE
-	TIM_InitStructure.TIM_Value     = 65536UL - (MAIN_Fosc / 1000UL);		//初值,
+	TIM_InitStructure.TIM_Value     = 65536UL - (MAIN_Fosc / 100UL);		//初值,  1000Hz=1000；100Hz=100
 	TIM_InitStructure.TIM_Run       = ENABLE;					//是否初始化后启动定时器, ENABLE或DISABLE
 	Timer_Inilize(Timer0,&TIM_InitStructure);					//初始化Timer0	  Timer0,Timer1,Timer2,Timer3,Timer4
 }
@@ -155,8 +155,8 @@ void	ALL_LED_off(void)
 	LED1_SIGNAL=1;  //高电平LED熄灭
 	LED2_SIGNAL=1;  //高电平LED熄灭
 	LED_LOW_BATT=1;	//高电平LED熄灭
-	Flag_LED1_ALARM=FALSE;
-	Flag_LED2_ALARM=FALSE;
+	Flag_LED1_ALARM_step=FALSE;
+	Flag_LED2_ALARM_step=FALSE;
 	Timer_LED1_ALARM=0;
 	Timer_LED2_ALARM=0;
 }
@@ -181,8 +181,7 @@ void	ADC_Vpower(void)
 	TX1_write2buff(Vdc%1000/100 + '0');
 	TX1_write2buff(Vdc%100/10 + '0');
 	TX1_write2buff(Vdc%10 + '0');
-	TX1_write2buff(' ');
-	TX1_write2buff(' ');
+	PrintString1("Vdc\r\n");
 }
 
 /******************** 主函数***********************/
@@ -208,68 +207,68 @@ void main(void)
 		{
 			if(!INT0)
 			{
-				PrintString1("INT0  ");
-				if(Flag_LED2_ALARM==FALSE)
+				switch(Flag_LED2_ALARM_step)
 				{
-					Flag_LED2_ALARM=TRUE;
-					Timer_LED2_ALARM=1500;
+					case 0:
+							PrintString1("slave step0 ");
+							Timer_LED2_ALARM=200;
+							Flag_LED2_ALARM_step=3;  //=3或=1
+							break;
+					case 1:
+							if(Timer_LED2_ALARM==0){PrintString1("slave step1 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=2;}
+							break;
+					case 2:
+							if(Timer_LED2_ALARM==0){PrintString1("slave step2 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=3;}
+					case 3:
+							if(Timer_LED2_ALARM==0){PrintString1("slave step3 ");Timer_LED2_ALARM=100;}							
+							break;							
+					default:
+							break;					
 				}
-				else if(Timer_LED2_ALARM==0)
-					Timer_LED2_ALARM=1000;
 			}
+			else if((Flag_LED2_ALARM_step==2)||(Flag_LED2_ALARM_step==1)&&(Timer_LED2_ALARM<50))
+				Timer_LED2_ALARM=0;
+
 			if(!INT1)
 			{
-				PrintString1("INT1  ");
-				if(Flag_LED1_ALARM==FALSE)
+				switch(Flag_LED1_ALARM_step)
 				{
-					Flag_LED1_ALARM=TRUE;
-					Timer_LED1_ALARM=1500;
+					case 0:
+							PrintString1("master step0 ");
+							Timer_LED1_ALARM=200;
+							Flag_LED1_ALARM_step=3;  //=3或=1
+							break;
+					case 1:
+							if(Timer_LED1_ALARM==0){PrintString1("master step1 ");Timer_LED1_ALARM=100;Flag_LED1_ALARM_step=2;}
+							break;
+					case 2:
+							if(Timer_LED1_ALARM==0){PrintString1("master step2 ");Timer_LED1_ALARM=100;Flag_LED1_ALARM_step=3;}
+					case 3:
+							if(Timer_LED1_ALARM==0){PrintString1("master step3 ");Timer_LED1_ALARM=100;}							
+							break;							
+					default:
+							break;					
 				}
-				else if(Timer_LED1_ALARM==0)
-					Timer_LED1_ALARM=1000;
 			}
+			else if((Flag_LED1_ALARM_step==2)||(Flag_LED1_ALARM_step==1)&&(Timer_LED1_ALARM<50))
+				Timer_LED1_ALARM=0;			
 
-			if(Timer_LED1_ALARM>1000)
+			if(Flag_LED1_ALARM_step!=2)
 			{
-				LED1_ALARM=1;
-				LED2_SIGNAL=0;
+				if(Timer_LED1_ALARM>150){LED1_ALARM=1;LED2_SIGNAL=0;}
+				else if(Timer_LED1_ALARM>100){LED1_ALARM=0;LED2_SIGNAL=0;}
+				else if(Timer_LED1_ALARM>50){LED1_ALARM=1;LED2_SIGNAL=0;}
+				else {LED1_ALARM=0;if(INT1)LED2_SIGNAL=1;}
 			}
-			else if(Timer_LED1_ALARM>500)
+			else {LED1_ALARM=0;LED2_SIGNAL=1;}	
+			if(Flag_LED2_ALARM_step!=2)
 			{
-				LED1_ALARM=0;
-				LED2_SIGNAL=0;
+				if(Timer_LED2_ALARM>150){LED2_ALARM=1;LED1_SIGNAL=0;}
+				else if(Timer_LED2_ALARM>100){LED2_ALARM=0;LED1_SIGNAL=0;}
+				else if(Timer_LED2_ALARM>50){LED2_ALARM=1;LED1_SIGNAL=0;}
+				else {LED2_ALARM=0;if(INT0)LED1_SIGNAL=1;}
 			}
-			else if(Timer_LED1_ALARM>0)
-			{
-				LED1_ALARM=1;
-				LED2_SIGNAL=0;			
-			}
-			else 
-			{
-				LED1_ALARM=0;
-				LED2_SIGNAL=1;			
-			}	
-
-			if(Timer_LED2_ALARM>1000)
-			{
-				LED2_ALARM=1;
-				LED1_SIGNAL=0;
-			}
-			else if(Timer_LED2_ALARM>500)
-			{
-				LED2_ALARM=0;
-				LED1_SIGNAL=0;
-			}
-			else if(Timer_LED2_ALARM>0)
-			{
-				LED2_ALARM=1;
-				LED1_SIGNAL=0;			
-			}
-			else 
-			{
-				LED2_ALARM=0;
-				LED1_SIGNAL=1;			
-			}
+			else {LED2_ALARM=0;LED1_SIGNAL=1;}
 		}
 		
 		if((INT0==1)&&(INT1==1)&&(Flag_power_Low==FALSE)&&(Timer_LED2_ALARM==0)&&(Timer_LED1_ALARM==0)) //等待外中断为高电平
