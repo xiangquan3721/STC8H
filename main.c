@@ -168,12 +168,12 @@ void	ADC_Vpower(void)
 	Vdc = (u32)1190 * (u32)1024 / Nref;			//Ux = Vref * Nx / Nref. Vref = 1190mV
 	if(Vdc>3200)
 	{
-		LED_LOW_BATT=1;
+		//LED_LOW_BATT=1;
 		Flag_power_Low=FALSE;
 	}
 	else 
 	{
-		LED_LOW_BATT=0;
+		//LED_LOW_BATT=0;
 		Flag_power_Low=TRUE;
 	}
 	TX1_write2buff(Vdc/1000 + '0');
@@ -269,6 +269,11 @@ void main(void)
 				else {LED2_ALARM=0;if(INT0)LED1_SIGNAL=1;}
 			}
 			else {LED2_ALARM=0;LED1_SIGNAL=1;}
+		}
+		else if(Timer_LOW_BATT==0)
+		{
+			Timer_LOW_BATT=50;
+			LED1_SIGNAL=~LED1_SIGNAL;
 		}
 		
 		if((INT0==1)&&(INT1==1)&&(Flag_power_Low==FALSE)&&(Timer_LED2_ALARM==0)&&(Timer_LED1_ALARM==0)) //等待外中断为高电平
