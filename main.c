@@ -270,10 +270,18 @@ void main(void)
 			}
 			else {LED2_ALARM=0;LED1_SIGNAL=1;}
 		}
-		else if(Timer_LOW_BATT==0)
+		else 
 		{
-			Timer_LOW_BATT=50;
-			LED1_SIGNAL=~LED1_SIGNAL;
+			if(Timer_ADC==0)
+			{
+				Timer_ADC=100;
+				ADC_Vpower();
+			}
+			if(Timer_LOW_BATT==0)
+			{
+				Timer_LOW_BATT=50;
+				LED1_SIGNAL=~LED1_SIGNAL;
+			}
 		}
 		
 		if((INT0==1)&&(INT1==1)&&(Flag_power_Low==FALSE)&&(Timer_LED2_ALARM==0)&&(Timer_LED1_ALARM==0)) //等待外中断为高电平

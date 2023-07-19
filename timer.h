@@ -41,7 +41,7 @@ typedef struct
 	u8	TIM_Run;		// «∑Ò‘À––		ENABLE,DISABLE
 } TIM_InitTypeDef;
 
-extern u16 Timer_LED1_ALARM,Timer_LED2_ALARM,Timer_LOW_BATT;
+extern u16 Timer_LED1_ALARM,Timer_LED2_ALARM,Timer_LOW_BATT,Timer_ADC;
 
 u8	Timer_Inilize(u8 TIM, TIM_InitTypeDef *TIMx);
 
