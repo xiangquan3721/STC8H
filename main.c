@@ -17,6 +17,7 @@
 #include	"delay.h"
 #include	"timer.h"
 #include	"adc.h"
+#include	"WDT.h"
 
 /*************	功能说明	**************
 
@@ -69,7 +70,15 @@ u8 Flag_LED1_ALARM_step,Flag_LED2_ALARM_step,Flag_power_Low;
 /*************  外部函数和变量声明 *****************/
 
 
+void	WDT_config(void)
+{
+	WDT_InitTypeDef	WDT_InitStructure;					//结构定义
 
+	WDT_InitStructure.WDT_Enable     = ENABLE;					//中断使能   ENABLE或DISABLE
+	WDT_InitStructure.WDT_IDLE_Mode  = WDT_IDLE_STOP;		//IDLE模式是否停止计数		WDT_IDLE_STOP,WDT_IDLE_RUN
+	WDT_InitStructure.WDT_PS         = WDT_SCALE_16;		//看门狗定时器时钟分频系数		WDT_SCALE_2,WDT_SCALE_4,WDT_SCALE_8,WDT_SCALE_16,WDT_SCALE_32,WDT_SCALE_64,WDT_SCALE_128,WDT_SCALE_256
+	WDT_Inilize(&WDT_InitStructure);					//初始化
+}
 /******************** IO口配置 ********************/
 void	GPIO_config(void)
 {
@@ -200,9 +209,11 @@ void main(void)
 	delay_ms(250);
 	delay_ms(250);
 	LED2_SIGNAL=1;
-    ADC_Vpower();		
+    ADC_Vpower();
+	WDT_config();		
 	while(1)
 	{
+		WDT_Clear();    // 喂狗
 		if(Flag_power_Low==FALSE)
 		{
 			if(!INT0)

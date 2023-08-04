@@ -411,6 +411,11 @@
               <FileType>1</FileType>
               <FilePath>.\ADC.c</FilePath>
             </File>
+            <File>
+              <FileName>WDT.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\WDT.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
