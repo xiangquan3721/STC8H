@@ -196,6 +196,7 @@ void	ADC_Vpower(void)
 /******************** 主函数***********************/
 void main(void)
 {
+	Timer_PowerON=1200;
 	GPIO_config();
 	ALL_LED_off();	
 	UART_config();
@@ -208,6 +209,10 @@ void main(void)
 	delay_ms(250);
 	delay_ms(250);
 	delay_ms(250);
+	delay_ms(250);
+	delay_ms(250);
+	delay_ms(250);
+	delay_ms(250);	
 	LED2_SIGNAL=1;
     ADC_Vpower();
 	WDT_config();		
@@ -216,70 +221,76 @@ void main(void)
 		WDT_Clear();    // 喂狗
 		if(Flag_power_Low==FALSE)
 		{
-			if(!INT0)
+			if(Timer_PowerON==0)
 			{
-				switch(Flag_LED2_ALARM_step)
-				{
-					case 0:
-							PrintString1("slave step0 ");
-							Timer_LED2_ALARM=200;
-							Flag_LED2_ALARM_step=3;  //=3或=1
-							break;
-					case 1:
-							if(Timer_LED2_ALARM==0){PrintString1("slave step1 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=2;}
-							break;
-					case 2:
-							if(Timer_LED2_ALARM==0){PrintString1("slave step2 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=3;}
-					case 3:
-							if(Timer_LED2_ALARM==0){PrintString1("slave step3 ");Timer_LED2_ALARM=100;}							
-							break;							
-					default:
-							break;					
-				}
-			}
-			else if((Flag_LED2_ALARM_step==2)||(Flag_LED2_ALARM_step==1)&&(Timer_LED2_ALARM<50))
-				Timer_LED2_ALARM=0;
+					if(!INT0)
+					{
+						if(Timer_LED2_ALARM==0)PrintString1("M\r\n");
+						switch(Flag_LED2_ALARM_step)
+						{
+							case 0:
+									PrintString1("slave step0 ");
+									Timer_LED2_ALARM=200;
+									Flag_LED2_ALARM_step=3;  //=3或=1
+									break;
+							case 1:
+									if(Timer_LED2_ALARM==0){PrintString1("slave step1 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=2;}
+									break;
+							case 2:
+									if(Timer_LED2_ALARM==0){PrintString1("slave step2 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=3;}
+							case 3:
+									if(Timer_LED2_ALARM==0){PrintString1("slave step3 ");Timer_LED2_ALARM=100;}							
+									break;							
+							default:
+									break;					
+						}
+					}
+					else if((Flag_LED2_ALARM_step==2)||(Flag_LED2_ALARM_step==1)&&(Timer_LED2_ALARM<50))
+						Timer_LED2_ALARM=0;
 
-			if(!INT1)
-			{
-				switch(Flag_LED1_ALARM_step)
-				{
-					case 0:
-							PrintString1("master step0 ");
-							Timer_LED1_ALARM=200;
-							Flag_LED1_ALARM_step=3;  //=3或=1
-							break;
-					case 1:
-							if(Timer_LED1_ALARM==0){PrintString1("master step1 ");Timer_LED1_ALARM=100;Flag_LED1_ALARM_step=2;}
-							break;
-					case 2:
-							if(Timer_LED1_ALARM==0){PrintString1("master step2 ");Timer_LED1_ALARM=100;Flag_LED1_ALARM_step=3;}
-					case 3:
-							if(Timer_LED1_ALARM==0){PrintString1("master step3 ");Timer_LED1_ALARM=100;}							
-							break;							
-					default:
-							break;					
-				}
-			}
-			else if((Flag_LED1_ALARM_step==2)||(Flag_LED1_ALARM_step==1)&&(Timer_LED1_ALARM<50))
-				Timer_LED1_ALARM=0;			
+					if(!INT1)
+					{
+						if(Timer_LED1_ALARM==0)PrintString1("S\r\n");
+						switch(Flag_LED1_ALARM_step)
+						{
+							case 0:
+									PrintString1("master step0 ");
+									Timer_LED1_ALARM=200;
+									Flag_LED1_ALARM_step=3;  //=3或=1
+									break;
+							case 1:
+									if(Timer_LED1_ALARM==0){PrintString1("master step1 ");Timer_LED1_ALARM=100;Flag_LED1_ALARM_step=2;}
+									break;
+							case 2:
+									if(Timer_LED1_ALARM==0){PrintString1("master step2 ");Timer_LED1_ALARM=100;Flag_LED1_ALARM_step=3;}
+							case 3:
+									if(Timer_LED1_ALARM==0){PrintString1("master step3 ");Timer_LED1_ALARM=100;}							
+									break;							
+							default:
+									break;					
+						}
+					}
+					else if((Flag_LED1_ALARM_step==2)||(Flag_LED1_ALARM_step==1)&&(Timer_LED1_ALARM<50))
+						Timer_LED1_ALARM=0;
+			}					
 
-			if(Flag_LED1_ALARM_step!=2)
-			{
-				if(Timer_LED1_ALARM>150){LED1_ALARM=1;LED2_SIGNAL=0;}
-				else if(Timer_LED1_ALARM>100){LED1_ALARM=0;LED2_SIGNAL=0;}
-				else if(Timer_LED1_ALARM>50){LED1_ALARM=1;LED2_SIGNAL=0;}
-				else {LED1_ALARM=0;if(INT1)LED2_SIGNAL=1;}
-			}
-			else {LED1_ALARM=0;LED2_SIGNAL=1;}	
-			if(Flag_LED2_ALARM_step!=2)
-			{
-				if(Timer_LED2_ALARM>150){LED2_ALARM=1;LED1_SIGNAL=0;}
-				else if(Timer_LED2_ALARM>100){LED2_ALARM=0;LED1_SIGNAL=0;}
-				else if(Timer_LED2_ALARM>50){LED2_ALARM=1;LED1_SIGNAL=0;}
-				else {LED2_ALARM=0;if(INT0)LED1_SIGNAL=1;}
-			}
-			else {LED2_ALARM=0;LED1_SIGNAL=1;}
+					if(Flag_LED1_ALARM_step!=2)
+					{
+						if(Timer_LED1_ALARM>150){LED1_ALARM=1;LED2_SIGNAL=0;}
+						else if(Timer_LED1_ALARM>100){LED1_ALARM=0;LED2_SIGNAL=0;}
+						else if(Timer_LED1_ALARM>50){LED1_ALARM=1;LED2_SIGNAL=0;}
+						else {LED1_ALARM=0;if(INT1)LED2_SIGNAL=1;}
+					}
+					else {LED1_ALARM=0;LED2_SIGNAL=1;}	
+					if(Flag_LED2_ALARM_step!=2)
+					{
+						if(Timer_LED2_ALARM>150){LED2_ALARM=1;LED1_SIGNAL=0;}
+						else if(Timer_LED2_ALARM>100){LED2_ALARM=0;LED1_SIGNAL=0;}
+						else if(Timer_LED2_ALARM>50){LED2_ALARM=1;LED1_SIGNAL=0;}
+						else {LED2_ALARM=0;if(INT0)LED1_SIGNAL=1;}
+					}
+					else {LED2_ALARM=0;LED1_SIGNAL=1;}
+
 		}
 		else 
 		{
@@ -295,11 +306,12 @@ void main(void)
 			}
 		}
 		
-		if((INT0==1)&&(INT1==1)&&(Flag_power_Low==FALSE)&&(Timer_LED2_ALARM==0)&&(Timer_LED1_ALARM==0)) //等待外中断为高电平
+		if((((INT0==1)&&(INT1==1))||(Timer_PowerON!=0))&&(Flag_power_Low==FALSE)&&(Timer_LED2_ALARM==0)&&(Timer_LED1_ALARM==0)) //等待外中断为高电平
 		{
 			delay_ms(10);	//delay 10ms
-			if((INT0==1)&&(INT1==1)) //等待外中断为高电平
+			if(((INT0==1)&&(INT1==1))||(Timer_PowerON!=0)) //等待外中断为高电平
 			{
+				Timer_PowerON=0;
 				PrintString1("SLEEP  ");
 				delay_ms(10);	//delay 10ms
 				Exti_config();
