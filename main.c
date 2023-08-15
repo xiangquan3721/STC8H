@@ -50,11 +50,11 @@ ADC说明:
 ******************************************/
 
 /*************	本地预定义	**************/
-#define LED1_ALARM  P12
-#define LED1_SIGNAL P14
+#define LED1_ALARM  P34
+#define LED1_SIGNAL P36
 #define LED_LOW_BATT P16
-#define LED2_ALARM P35
-#define LED2_SIGNAL P36
+#define LED2_ALARM P10
+#define LED2_SIGNAL P11
 /*************	本地常量声明	**************/
 
 
