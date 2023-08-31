@@ -230,7 +230,7 @@ void main(void)
 						{
 							case 0:
 									PrintString1("slave step0 ");
-									Timer_LED2_ALARM=200;
+									Timer_LED2_ALARM=400;
 									Flag_LED2_ALARM_step=3;  //=3»ò=1
 									break;
 							case 1:
@@ -255,7 +255,7 @@ void main(void)
 						{
 							case 0:
 									PrintString1("master step0 ");
-									Timer_LED1_ALARM=200;
+									Timer_LED1_ALARM=400;
 									Flag_LED1_ALARM_step=3;  //=3»ò=1
 									break;
 							case 1:
@@ -275,7 +275,11 @@ void main(void)
 
 					if(Flag_LED1_ALARM_step!=2)
 					{
-						if(Timer_LED1_ALARM>150)LED1_ALARM=1;
+						if(Timer_LED1_ALARM>350)LED1_ALARM=1;
+						else if(Timer_LED1_ALARM>300)LED1_ALARM=0;
+						else if(Timer_LED1_ALARM>250)LED1_ALARM=1;
+						else if(Timer_LED1_ALARM>200)LED1_ALARM=0;						
+						else if(Timer_LED1_ALARM>150)LED1_ALARM=1;
 						else if(Timer_LED1_ALARM>100)LED1_ALARM=0;
 						else if(Timer_LED1_ALARM>50)LED1_ALARM=1;
 						else LED1_ALARM=0;
@@ -285,7 +289,11 @@ void main(void)
 					else {LED1_ALARM=0;LED2_SIGNAL=1;}	
 					if(Flag_LED2_ALARM_step!=2)
 					{
-						if(Timer_LED2_ALARM>150)LED2_ALARM=1;
+						if(Timer_LED2_ALARM>350)LED2_ALARM=1;
+						else if(Timer_LED2_ALARM>300)LED2_ALARM=0;
+						else if(Timer_LED2_ALARM>250)LED2_ALARM=1;
+						else if(Timer_LED2_ALARM>200)LED2_ALARM=0;						
+						else if(Timer_LED2_ALARM>150)LED2_ALARM=1;
 						else if(Timer_LED2_ALARM>100)LED2_ALARM=0;
 						else if(Timer_LED2_ALARM>50)LED2_ALARM=1;
 						else LED2_ALARM=0;
