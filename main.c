@@ -245,7 +245,7 @@ void main(void)
 									break;					
 						}
 					}
-					else if(Timer_LED2_ALARM<50)
+					else if(Timer_LED2_ALARM<75)
 						Timer_LED2_ALARM=0;
 
 					if(!INT1)
@@ -270,18 +270,18 @@ void main(void)
 									break;					
 						}
 					}
-					else if(Timer_LED1_ALARM<50)
+					else if(Timer_LED1_ALARM<75)
 						Timer_LED1_ALARM=0;					
 
 					if(Flag_LED1_ALARM_step!=2)
 					{
-						if(Timer_LED1_ALARM>350)LED1_ALARM=1;
+						if(Timer_LED1_ALARM>375)LED1_ALARM=1;
 						else if(Timer_LED1_ALARM>300)LED1_ALARM=0;
-						else if(Timer_LED1_ALARM>250)LED1_ALARM=1;
+						else if(Timer_LED1_ALARM>275)LED1_ALARM=1;
 						else if(Timer_LED1_ALARM>200)LED1_ALARM=0;						
-						else if(Timer_LED1_ALARM>150)LED1_ALARM=1;
+						else if(Timer_LED1_ALARM>175)LED1_ALARM=1;
 						else if(Timer_LED1_ALARM>100)LED1_ALARM=0;
-						else if(Timer_LED1_ALARM>50)LED1_ALARM=1;
+						else if(Timer_LED1_ALARM>75)LED1_ALARM=1;
 						else LED1_ALARM=0;
 						if(INT1)LED2_SIGNAL=1;
 						else LED2_SIGNAL=0;
@@ -289,13 +289,13 @@ void main(void)
 					else {LED1_ALARM=0;LED2_SIGNAL=1;}	
 					if(Flag_LED2_ALARM_step!=2)
 					{
-						if(Timer_LED2_ALARM>350)LED2_ALARM=1;
+						if(Timer_LED2_ALARM>375)LED2_ALARM=1;
 						else if(Timer_LED2_ALARM>300)LED2_ALARM=0;
-						else if(Timer_LED2_ALARM>250)LED2_ALARM=1;
+						else if(Timer_LED2_ALARM>275)LED2_ALARM=1;
 						else if(Timer_LED2_ALARM>200)LED2_ALARM=0;						
-						else if(Timer_LED2_ALARM>150)LED2_ALARM=1;
+						else if(Timer_LED2_ALARM>175)LED2_ALARM=1;
 						else if(Timer_LED2_ALARM>100)LED2_ALARM=0;
-						else if(Timer_LED2_ALARM>50)LED2_ALARM=1;
+						else if(Timer_LED2_ALARM>75)LED2_ALARM=1;
 						else LED2_ALARM=0;
 						if(INT0)LED1_SIGNAL=1;
 						else LED1_SIGNAL=0;
