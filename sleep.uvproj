@@ -416,6 +416,11 @@
               <FileType>1</FileType>
               <FilePath>.\WDT.c</FilePath>
             </File>
+            <File>
+              <FileName>PWM.C</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\PWM.C</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
