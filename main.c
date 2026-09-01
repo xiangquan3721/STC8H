@@ -53,6 +53,8 @@ ADC说明:
 /*************	本地预定义	**************/
 #define LED_ALARM  P34
 #define LED_SIGNAL P36
+#define BEEP_ALARM P17
+#define POWER_CE   P13
 /*************	本地常量声明	**************/
 
 
@@ -62,7 +64,7 @@ u8 WakeUpSource;
 u8 WakeUpCnt;
 u16	Vdc,Nref;
 u8 Flag_LED1_ALARM_step,Flag_LED2_ALARM_step,Flag_power_Low;
-u8 Flag_PWM_LED_ENABLE=0;
+u8 Flag_PWM_LED_ENABLE=0,Flag_PWM_BEEP_ENABLE=0;
 /*************	本地函数声明	**************/
 
 
@@ -174,9 +176,9 @@ void	PWM_LED_config(void)
 	
 	PWMx_InitStructure.PWM_EnoSelect   = ENO4P;	//输出通道选择,	ENO1P,ENO1N,ENO2P,ENO2N,ENO3P,ENO3N,ENO4P,ENO4N / ENO5P,ENO6P,ENO7P,ENO8P
 	PWMx_InitStructure.PWM_PS_SW       = PWM4_SW_P34_P33;	//切换端口,		PWM1_SW_P10_P11,PWM1_SW_P20_P21,PWM1_SW_P60_P61
-																											//						PWM2_SW_P12_P13,PWM2_SW_P22_P23,PWM2_SW_P62_P63
-																											//						PWM3_SW_P14_P15,PWM3_SW_P24_P25,PWM3_SW_P64_P65
-																											//						PWM4_SW_P16_P17,PWM4_SW_P26_P27,PWM4_SW_P66_P67,PWM4_SW_P34_P33
+															//			   PWM2_SW_P12_P13,PWM2_SW_P22_P23,PWM2_SW_P62_P63
+															//			   PWM3_SW_P14_P15,PWM3_SW_P24_P25,PWM3_SW_P64_P65
+															//			   PWM4_SW_P16_P17,PWM4_SW_P26_P27,PWM4_SW_P66_P67,PWM4_SW_P34_P33
 
 	PWMx_InitStructure.PWM_CC4Enable   = ENABLE;				//开启PWM4P输入捕获/比较输出,  ENABLE,DISABLE
 	//PWMx_InitStructure.PWM_CC4NEnable  = ENABLE;				//开启PWM4N输入捕获/比较输出,  ENABLE,DISABLE
@@ -202,9 +204,9 @@ void	PWM_LED_config(void)
 	
 	PWMx_InitStructure.PWM_EnoSelect   = 0;	//输出通道选择,	ENO1P,ENO1N,ENO2P,ENO2N,ENO3P,ENO3N,ENO4P,ENO4N / ENO5P,ENO6P,ENO7P,ENO8P
 	PWMx_InitStructure.PWM_PS_SW       = 0;	//切换端口,		PWM1_SW_P10_P11,PWM1_SW_P20_P21,PWM1_SW_P60_P61
-																											//						PWM2_SW_P12_P13,PWM2_SW_P22_P23,PWM2_SW_P62_P63
-																											//						PWM3_SW_P14_P15,PWM3_SW_P24_P25,PWM3_SW_P64_P65
-																											//						PWM4_SW_P16_P17,PWM4_SW_P26_P27,PWM4_SW_P66_P67,PWM4_SW_P34_P33
+															//			   PWM2_SW_P12_P13,PWM2_SW_P22_P23,PWM2_SW_P62_P63
+															//			   PWM3_SW_P14_P15,PWM3_SW_P24_P25,PWM3_SW_P64_P65
+															//			   PWM4_SW_P16_P17,PWM4_SW_P26_P27,PWM4_SW_P66_P67,PWM4_SW_P34_P33
 
 	PWMx_InitStructure.PWM_CC4Enable   = DISABLE;				//开启PWM4P输入捕获/比较输出,  ENABLE,DISABLE
 	//PWMx_InitStructure.PWM_CC4NEnable  = ENABLE;				//开启PWM4N输入捕获/比较输出,  ENABLE,DISABLE
@@ -213,11 +215,64 @@ void	PWM_LED_config(void)
 	PWMx_InitStructure.PWM_CEN_Enable   = DISABLE;				//使能计数器, ENABLE,DISABLE
 	PWM_Configuration(PWMA, &PWMx_InitStructure);				//初始化PWM,  PWMA,PWMB
  }
+ void	PWM_BEEP_config(void)
+{
+	PWMx_InitDefine		PWMx_InitStructure;
+	
+	PWMx_InitStructure.PWM5_Mode    =	CCMRn_PWM_MODE1;	//模式,		CCMRn_FREEZE,CCMRn_MATCH_VALID,CCMRn_MATCH_INVALID,CCMRn_ROLLOVER,CCMRn_FORCE_INVALID,CCMRn_FORCE_VALID,CCMRn_PWM_MODE1,CCMRn_PWM_MODE2
+
+	PWMx_InitStructure.PWM5_SetPriority  = Priority_0;			//指定中断优先级(低到高) Priority_0,Priority_1,Priority_2,Priority_3
+	
+	PWMx_InitStructure.PWM_Period   = MAIN_Fosc/2000;			//周期时间,   2KHz=2000,1KHz=1000,
+	PWMx_InitStructure.PWM5_Duty    = PWMx_InitStructure.PWM_Period/2;	  //PWM5占空比时间, 0~Period
+	PWMx_InitStructure.PWM_DeadTime = 0;								//死区发生器设置, 0~255
+	
+	PWMx_InitStructure.PWM_EnoSelect   = ENO5P;	//输出通道选择,	ENO1P,ENO1N,ENO2P,ENO2N,ENO3P,ENO3N,ENO4P,ENO4N / ENO5P,ENO6P,ENO7P,ENO8P
+	PWMx_InitStructure.PWM_PS_SW       = PWM5_SW_P17;	//切换端口,		PWM1_SW_P10_P11,PWM1_SW_P20_P21,PWM1_SW_P60_P61
+															//			   PWM2_SW_P12_P13,PWM2_SW_P22_P23,PWM2_SW_P62_P63
+															//			   PWM3_SW_P14_P15,PWM3_SW_P24_P25,PWM3_SW_P64_P65
+															//			   PWM4_SW_P16_P17,PWM4_SW_P26_P27,PWM4_SW_P66_P67,PWM4_SW_P34_P33
+
+	PWMx_InitStructure.PWM_CC5Enable   = ENABLE;				//开启PWM5P输入捕获/比较输出,  ENABLE,DISABLE
+	
+	PWMx_InitStructure.PWM_MainOutEnable= ENABLE;				//主输出使能, ENABLE,DISABLE
+	PWMx_InitStructure.PWM_CEN_Enable   = ENABLE;				//使能计数器, ENABLE,DISABLE
+	PWM_Configuration(PWMB, &PWMx_InitStructure);				//初始化PWM,  PWMA,PWMB
+	
+	PWMA_Duty.PWM5_Duty=PWMx_InitStructure.PWM_Period/2;
+	UpdatePwm(PWMB, &PWMA_Duty); 
+}
+ void PWM_BEEP_OFF(void)
+ {
+	PWMx_InitDefine		PWMx_InitStructure;
+	
+	PWMx_InitStructure.PWM5_Mode    =	CCMRn_FREEZE;	//模式,		CCMRn_FREEZE,CCMRn_MATCH_VALID,CCMRn_MATCH_INVALID,CCMRn_ROLLOVER,CCMRn_FORCE_INVALID,CCMRn_FORCE_VALID,CCMRn_PWM_MODE1,CCMRn_PWM_MODE2
+
+	PWMx_InitStructure.PWM5_SetPriority  = Priority_0;			//指定中断优先级(低到高) Priority_0,Priority_1,Priority_2,Priority_3
+	
+	PWMx_InitStructure.PWM_Period   = 0;							//周期时间,   0~65535
+	PWMx_InitStructure.PWM5_Duty    = 0;	//PWM5占空比时间, 0~Period
+	PWMx_InitStructure.PWM_DeadTime = 0;								//死区发生器设置, 0~255
+	
+	PWMx_InitStructure.PWM_EnoSelect   = 0;	//输出通道选择,	ENO1P,ENO1N,ENO2P,ENO2N,ENO3P,ENO3N,ENO4P,ENO4N / ENO5P,ENO6P,ENO7P,ENO8P
+	PWMx_InitStructure.PWM_PS_SW       = 0;	//切换端口,		PWM1_SW_P10_P11,PWM1_SW_P20_P21,PWM1_SW_P60_P61
+															//			   PWM2_SW_P12_P13,PWM2_SW_P22_P23,PWM2_SW_P62_P63
+															//			   PWM3_SW_P14_P15,PWM3_SW_P24_P25,PWM3_SW_P64_P65
+															//			   PWM4_SW_P16_P17,PWM4_SW_P26_P27,PWM4_SW_P66_P67,PWM4_SW_P34_P33
+
+	PWMx_InitStructure.PWM_CC5Enable   = DISABLE;				//开启PWM5P输入捕获/比较输出,  ENABLE,DISABLE
+	
+	PWMx_InitStructure.PWM_MainOutEnable= DISABLE;				//主输出使能, ENABLE,DISABLE
+	PWMx_InitStructure.PWM_CEN_Enable   = DISABLE;				//使能计数器, ENABLE,DISABLE
+	PWM_Configuration(PWMB, &PWMx_InitStructure);				//初始化PWM,  PWMA,PWMB
+ }
 /****************  ALL LED熄灭 *****************/
 void	ALL_LED_off(void)
 {
 	LED_ALARM=0;   //低电平LED熄灭
 	LED_SIGNAL=1;  //高电平LED熄灭
+	BEEP_ALARM=0;   //低电平蜂鸣器熄灭
+	POWER_CE=0;  //低电平关闭电源
 	Flag_LED1_ALARM_step=FALSE;
 	Flag_LED2_ALARM_step=FALSE;
 	Timer_LED1_ALARM=0;
@@ -289,35 +344,43 @@ void main(void)
 									break;					
 						}
 					}
-					else if(Timer_LED2_ALARM<50)
+					else if(Timer_LED2_ALARM<5)
 						Timer_LED2_ALARM=0;
 	
 					if(Flag_LED2_ALARM_step!=2)
 					{
-						if(Timer_LED2_ALARM>150)
-						{//LED_ALARM=1;
+						if((Timer_LED2_ALARM<200)&&(Timer_LED2_ALARM>155)||(Timer_LED2_ALARM<100)&&(Timer_LED2_ALARM>55))
+						{
 							if(Flag_PWM_LED_ENABLE==0)
 							{
 								Flag_PWM_LED_ENABLE=1;
 								PWM_LED_config();
+								PrintString1("LED ON\r\n");
+								POWER_CE=1;
+							}
+							if(Flag_PWM_BEEP_ENABLE==1)
+							{
+								Flag_PWM_BEEP_ENABLE=0;
+								PWM_BEEP_OFF();
+								PrintString1("BEEP OFF\r\n");
+								BEEP_ALARM=0;
 							}
 						}
-						else if(Timer_LED2_ALARM>100)
+						else if((Timer_LED2_ALARM<150)&&(Timer_LED2_ALARM>105)||(Timer_LED2_ALARM<50)&&(Timer_LED2_ALARM>5))
 						{   
 							if(Flag_PWM_LED_ENABLE==1)
 							{
 								Flag_PWM_LED_ENABLE=0;
-								PWM_LED_OFF();
+							 	PWM_LED_OFF();
+								PrintString1("LED OFF\r\n");
+								LED_ALARM=0;
 							}
-							LED_ALARM=0;
-						}
-						else if(Timer_LED2_ALARM>50)
-						{//LED_ALARM=1;
-							if(Flag_PWM_LED_ENABLE==0)
+							if(Flag_PWM_BEEP_ENABLE==0)
 							{
-								Flag_PWM_LED_ENABLE=1;
-								PWM_LED_config();
-							}
+								Flag_PWM_BEEP_ENABLE=1;
+								PWM_BEEP_config();
+								PrintString1("BEEP ON\r\n");
+							}							
 						}
 						else 
 						{   
@@ -325,13 +388,21 @@ void main(void)
 							{
 								Flag_PWM_LED_ENABLE=0;
 								PWM_LED_OFF();
+								PrintString1("LED OFF\r\n");
+								LED_ALARM=0;
 							}
-							LED_ALARM=0;
+							if(Flag_PWM_BEEP_ENABLE==1)
+							{
+								Flag_PWM_BEEP_ENABLE=0;
+								PWM_BEEP_OFF();
+								PrintString1("BEEP OFF\r\n");
+								BEEP_ALARM=0;
+							}							
 						}
 						if(INT0)LED_SIGNAL=1;
 						else LED_SIGNAL=0;
 					}
-					else {LED_ALARM=0;LED_SIGNAL=1;}
+					else {LED_ALARM=0;BEEP_ALARM=0;POWER_CE=0;LED_SIGNAL=1;}
 			}
 
 		}
