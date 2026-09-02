@@ -49,7 +49,7 @@ ADC说明:
 下载时, 选择时钟 22.1184MHz (用户可在"config.h"修改频率).
 
 ******************************************/
-
+//#define	DEF_log
 /*************	本地预定义	**************/
 #define LED_ALARM  P34
 #define LED_SIGNAL P36
@@ -62,7 +62,7 @@ ADC说明:
 PWMx_Duty PWMA_Duty;
 u8 WakeUpSource;
 u8 WakeUpCnt;
-u16	Vdc,Nref;
+u16	Vdc,Nref,Vadc_led,Nadc_led;
 u8 Flag_LED1_ALARM_step,Flag_LED2_ALARM_step,Flag_power_Low;
 u8 Flag_PWM_LED_ENABLE=0,Flag_PWM_BEEP_ENABLE=0;
 /*************	本地函数声明	**************/
@@ -96,7 +96,12 @@ void	GPIO_config(void)
 	
 	GPIO_InitStructure.Pin  = GPIO_Pin_All;			//指定要初始化的IO, GPIO_Pin_0 ~ GPIO_Pin_7, 或操作
 	GPIO_InitStructure.Mode = GPIO_PullUp;			//指定IO的输入或输出方式,GPIO_PullUp,GPIO_HighZ,GPIO_OUT_OD,GPIO_OUT_PP
-	GPIO_Inilize(GPIO_P5,&GPIO_InitStructure);	//初始化				
+	GPIO_Inilize(GPIO_P5,&GPIO_InitStructure);	//初始化
+	
+	//AD口设置为输入口
+	GPIO_InitStructure.Pin  = GPIO_Pin_1;		//指定要初始化的IO, GPIO_Pin_0 ~ GPIO_Pin_7
+	GPIO_InitStructure.Mode = GPIO_HighZ;	//指定IO的输入或输出方式,GPIO_PullUp,GPIO_HighZ,GPIO_OUT_OD,GPIO_OUT_PP
+	GPIO_Inilize(GPIO_P1,&GPIO_InitStructure);	//初始化	
 }
 
 /************************ 定时器配置 ****************************/
@@ -283,7 +288,7 @@ void	ALL_LED_off(void)
 void	ADC_Vpower(void)
 {
 	Nref = Get_ADCResult(15);	//读内部基准电压, 读15通道
-	Vdc = (u32)1190 * (u32)1024 / Nref;			//Ux = Vref * Nx / Nref. Vref = 1190mV
+	Vdc = (u32)1190 * (u32)1024 / Nref;			//Ux = Vref * Nx / Nref;    Vref = 1190mV
 	if(Vdc>3200)
 	{
 		//LED_LOW_BATT=1;
@@ -294,12 +299,27 @@ void	ADC_Vpower(void)
 		//LED_LOW_BATT=0;
 		Flag_power_Low=TRUE;
 	}
+	#ifdef DEF_log
+	PrintString1("Vdc:");	
 	TX1_write2buff(Vdc/1000 + '0');
 	TX1_write2buff('.');
 	TX1_write2buff(Vdc%1000/100 + '0');
 	TX1_write2buff(Vdc%100/10 + '0');
 	TX1_write2buff(Vdc%10 + '0');
-	PrintString1("Vdc\r\n");
+	PrintString1("mV\r\n");
+	#endif	
+
+	Nadc_led = Get_ADCResult(1);	//读LED的温度, 读1通道
+	Vadc_led = (u32)Vdc * (u32)Nadc_led / 1024;	//Ux = Vdc * Nx / 1024;
+	#ifdef DEF_log
+	PrintString1("Vadc_led:");
+	TX1_write2buff(Vadc_led/1000 + '0');
+	TX1_write2buff('.');
+	TX1_write2buff(Vadc_led%1000/100 + '0');
+	TX1_write2buff(Vadc_led%100/10 + '0');
+	TX1_write2buff(Vadc_led%10 + '0');
+	PrintString1("mV\r\n");	
+	#endif
 }
 
 /******************** 主函数***********************/
@@ -312,7 +332,9 @@ void main(void)
 	Timer_config();
 	ADC_config();
 //	Exti_config();
-	EA  = 1;		//Enable all interrupt	
+	EA  = 1;		//Enable all interrupt
+	POWER_CE=1;
+	delay_ms(100);	
     ADC_Vpower();
 	WDT_config();		
 	while(1)
@@ -324,21 +346,21 @@ void main(void)
 			{
 					if(!INT0)
 					{
-						if(Timer_LED2_ALARM==0)PrintString1("M\r\n");
+						if(Timer_LED2_ALARM==0)PrintString1("INT0\r\n");
 						switch(Flag_LED2_ALARM_step)
 						{
 							case 0:
-									PrintString1("slave step0 ");
+									PrintString1("step0 ");
 									Timer_LED2_ALARM=200;
 									Flag_LED2_ALARM_step=3;  //=3或=1
 									break;
 							case 1:
-									if(Timer_LED2_ALARM==0){PrintString1("slave step1 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=2;}
+									if(Timer_LED2_ALARM==0){PrintString1("step1 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=2;}
 									break;
 							case 2:
-									if(Timer_LED2_ALARM==0){PrintString1("slave step2 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=3;}
+									if(Timer_LED2_ALARM==0){PrintString1("step2 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=3;}
 							case 3:
-									if(Timer_LED2_ALARM==0){PrintString1("slave step3 ");Timer_LED2_ALARM=100;}							
+									if(Timer_LED2_ALARM==0){PrintString1("step3 ");Timer_LED2_ALARM=100;}							
 									break;							
 							default:
 									break;					
@@ -354,15 +376,29 @@ void main(void)
 							if(Flag_PWM_LED_ENABLE==0)
 							{
 								Flag_PWM_LED_ENABLE=1;
-								PWM_LED_config();
-								PrintString1("LED ON\r\n");
-								POWER_CE=1;
+								if(Vadc_led>1294)  //LED温度<80℃  80℃时Rt=1.669K，Pp=2.2K
+								{
+									PWM_LED_config();
+									#ifdef DEF_log
+									PrintString1("LED ON\r\n");
+									#endif
+								}
+								else 
+								{
+									PWM_LED_OFF();
+									#ifdef DEF_log
+									PrintString1("LED high Temp\r\n");
+									#endif
+									LED_ALARM=0;
+								}
 							}
 							if(Flag_PWM_BEEP_ENABLE==1)
 							{
 								Flag_PWM_BEEP_ENABLE=0;
 								PWM_BEEP_OFF();
+								#ifdef DEF_log
 								PrintString1("BEEP OFF\r\n");
+								#endif
 								BEEP_ALARM=0;
 							}
 						}
@@ -372,14 +408,18 @@ void main(void)
 							{
 								Flag_PWM_LED_ENABLE=0;
 							 	PWM_LED_OFF();
+								#ifdef DEF_log
 								PrintString1("LED OFF\r\n");
+								#endif
 								LED_ALARM=0;
 							}
 							if(Flag_PWM_BEEP_ENABLE==0)
 							{
 								Flag_PWM_BEEP_ENABLE=1;
 								PWM_BEEP_config();
+								#ifdef DEF_log
 								PrintString1("BEEP ON\r\n");
+								#endif
 							}							
 						}
 						else 
@@ -388,14 +428,18 @@ void main(void)
 							{
 								Flag_PWM_LED_ENABLE=0;
 								PWM_LED_OFF();
+								#ifdef DEF_log
 								PrintString1("LED OFF\r\n");
+								#endif
 								LED_ALARM=0;
 							}
 							if(Flag_PWM_BEEP_ENABLE==1)
 							{
 								Flag_PWM_BEEP_ENABLE=0;
 								PWM_BEEP_OFF();
+								#ifdef DEF_log
 								PrintString1("BEEP OFF\r\n");
+								#endif
 								BEEP_ALARM=0;
 							}							
 						}
@@ -408,17 +452,18 @@ void main(void)
 		}
 		else 
 		{
-			if(Timer_ADC==0)
-			{
-				Timer_ADC=100;
-				ADC_Vpower();
-			}
 			if(Timer_LOW_BATT==0)
 			{
 				Timer_LOW_BATT=50;
 				LED_SIGNAL=~LED_SIGNAL;
 			}
 		}
+
+		if(Timer_ADC==0)
+		{
+			Timer_ADC=10;
+			ADC_Vpower();
+		}		
 		
 		if(((INT0==1)||(Timer_PowerON!=0))&&(Flag_power_Low==FALSE)&&(Timer_LED2_ALARM==0)&&(Timer_LED1_ALARM==0)) //等待外中断为高电平
 		{
@@ -446,6 +491,8 @@ void main(void)
 				TX1_write2buff(WakeUpCnt%10+'0');
 				PrintString1("次唤醒\r\n");
 
+				POWER_CE=1;
+				delay_ms(20);
 				ADC_Vpower();
 			}
 		}
