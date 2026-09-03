@@ -49,7 +49,8 @@ ADC说明:
 下载时, 选择时钟 22.1184MHz (用户可在"config.h"修改频率).
 
 ******************************************/
-//#define	DEF_log
+//#define	DEF_ADC_log
+//#define	DEF_PWMout_log
 /*************	本地预定义	**************/
 #define LED_ALARM  P34
 #define LED_SIGNAL P36
@@ -62,9 +63,10 @@ ADC说明:
 PWMx_Duty PWMA_Duty;
 u8 WakeUpSource;
 u8 WakeUpCnt;
-u16	Vdc,Nref,Vadc_led,Nadc_led;
+u16	Vdc,Vadc_led;
 u8 Flag_LED1_ALARM_step,Flag_LED2_ALARM_step,Flag_power_Low;
 u8 Flag_PWM_LED_ENABLE=0,Flag_PWM_BEEP_ENABLE=0;
+u8 Flag_PWM_LED_Outputting=0,Flag_PWM_BEEP_Outputting=0;
 /*************	本地函数声明	**************/
 
 
@@ -287,7 +289,15 @@ void	ALL_LED_off(void)
 /****************  ALL LED熄灭 *****************/
 void	ADC_Vpower(void)
 {
-	Nref = Get_ADCResult(15);	//读内部基准电压, 读15通道
+	u8 i;
+	u16	Nref,Sum_Nx,Nadc_led;
+
+	Sum_Nx=0;
+	for(i=0;i<5;i++)
+	{
+		Sum_Nx += Get_ADCResult(15);	//读内部基准电压, 读15通道
+	}
+	Nref = Sum_Nx/5;
 	Vdc = (u32)1190 * (u32)1024 / Nref;			//Ux = Vref * Nx / Nref;    Vref = 1190mV
 	if(Vdc>3200)
 	{
@@ -299,7 +309,7 @@ void	ADC_Vpower(void)
 		//LED_LOW_BATT=0;
 		Flag_power_Low=TRUE;
 	}
-	#ifdef DEF_log
+	#ifdef DEF_ADC_log
 	PrintString1("Vdc:");	
 	TX1_write2buff(Vdc/1000 + '0');
 	TX1_write2buff('.');
@@ -309,9 +319,14 @@ void	ADC_Vpower(void)
 	PrintString1("mV\r\n");
 	#endif	
 
-	Nadc_led = Get_ADCResult(1);	//读LED的温度, 读1通道
+	Sum_Nx=0;
+	for(i=0;i<5;i++)
+	{
+		Sum_Nx += Get_ADCResult(1);	//读LED的温度, 读1通道
+	}
+	Nadc_led = Sum_Nx/5;
 	Vadc_led = (u32)Vdc * (u32)Nadc_led / 1024;	//Ux = Vdc * Nx / 1024;
-	#ifdef DEF_log
+	#ifdef DEF_ADC_log
 	PrintString1("Vadc_led:");
 	TX1_write2buff(Vadc_led/1000 + '0');
 	TX1_write2buff('.');
@@ -322,6 +337,55 @@ void	ADC_Vpower(void)
 	#endif
 }
 
+void PWM_output(void)
+{
+	if(Flag_PWM_LED_ENABLE)
+	{
+		if(Flag_PWM_LED_Outputting==0)
+		{
+			Flag_PWM_LED_Outputting=1;
+			PWM_LED_config();
+			#ifdef DEF_PWMout_log
+			PrintString1("LED ON\r\n");
+			#endif
+		}
+	}
+	else 
+	{
+		if(Flag_PWM_LED_Outputting==1)
+		{
+			Flag_PWM_LED_Outputting=0;
+			PWM_LED_OFF();
+			#ifdef DEF_PWMout_log
+			PrintString1("LED OFF\r\n");
+			#endif
+			LED_ALARM=0;
+		}
+	}
+	if(Flag_PWM_BEEP_ENABLE)
+	{
+		if(Flag_PWM_BEEP_Outputting==0)
+		{
+			Flag_PWM_BEEP_Outputting=1;
+			PWM_BEEP_config();
+			#ifdef DEF_PWMout_log
+			PrintString1("BEEP ON\r\n");
+			#endif
+		}
+	}
+	else 
+	{
+		if(Flag_PWM_BEEP_Outputting==1)
+		{
+			Flag_PWM_BEEP_Outputting=0;
+			PWM_BEEP_OFF();
+			#ifdef DEF_PWMout_log
+			PrintString1("BEEP OFF\r\n");
+			#endif
+			BEEP_ALARM=0;
+		}
+	}
+}
 /******************** 主函数***********************/
 void main(void)
 {
@@ -373,82 +437,34 @@ void main(void)
 					{
 						if((Timer_LED2_ALARM<200)&&(Timer_LED2_ALARM>155)||(Timer_LED2_ALARM<100)&&(Timer_LED2_ALARM>55))
 						{
-							if(Flag_PWM_LED_ENABLE==0)
+							if(Vadc_led<1294)  //LED温度>80℃  80℃时Rt=1.669K，Rp=2.2K
+								Flag_PWM_LED_ENABLE=0;
+							else
 							{
 								Flag_PWM_LED_ENABLE=1;
-								if(Vadc_led>1294)  //LED温度<80℃  80℃时Rt=1.669K，Pp=2.2K
-								{
-									PWM_LED_config();
-									#ifdef DEF_log
-									PrintString1("LED ON\r\n");
-									#endif
-								}
-								else 
-								{
-									PWM_LED_OFF();
-									#ifdef DEF_log
-									PrintString1("LED high Temp\r\n");
-									#endif
-									LED_ALARM=0;
-								}
-							}
-							if(Flag_PWM_BEEP_ENABLE==1)
-							{
 								Flag_PWM_BEEP_ENABLE=0;
-								PWM_BEEP_OFF();
-								#ifdef DEF_log
-								PrintString1("BEEP OFF\r\n");
-								#endif
-								BEEP_ALARM=0;
 							}
 						}
 						else if((Timer_LED2_ALARM<150)&&(Timer_LED2_ALARM>105)||(Timer_LED2_ALARM<50)&&(Timer_LED2_ALARM>5))
 						{   
-							if(Flag_PWM_LED_ENABLE==1)
-							{
-								Flag_PWM_LED_ENABLE=0;
-							 	PWM_LED_OFF();
-								#ifdef DEF_log
-								PrintString1("LED OFF\r\n");
-								#endif
-								LED_ALARM=0;
-							}
-							if(Flag_PWM_BEEP_ENABLE==0)
-							{
-								Flag_PWM_BEEP_ENABLE=1;
-								PWM_BEEP_config();
-								#ifdef DEF_log
-								PrintString1("BEEP ON\r\n");
-								#endif
-							}							
+							Flag_PWM_LED_ENABLE=0;
+							Flag_PWM_BEEP_ENABLE=1;							
 						}
 						else 
 						{   
-							if(Flag_PWM_LED_ENABLE==1)
-							{
-								Flag_PWM_LED_ENABLE=0;
-								PWM_LED_OFF();
-								#ifdef DEF_log
-								PrintString1("LED OFF\r\n");
-								#endif
-								LED_ALARM=0;
-							}
-							if(Flag_PWM_BEEP_ENABLE==1)
-							{
-								Flag_PWM_BEEP_ENABLE=0;
-								PWM_BEEP_OFF();
-								#ifdef DEF_log
-								PrintString1("BEEP OFF\r\n");
-								#endif
-								BEEP_ALARM=0;
-							}							
+							Flag_PWM_LED_ENABLE=0;
+							Flag_PWM_BEEP_ENABLE=0;							
 						}
 						if(INT0)LED_SIGNAL=1;
 						else LED_SIGNAL=0;
 					}
-					else {LED_ALARM=0;BEEP_ALARM=0;POWER_CE=0;LED_SIGNAL=1;}
+					else 
+					{
+						LED_SIGNAL=1;
+						Flag_PWM_LED_ENABLE=0;
+						Flag_PWM_BEEP_ENABLE=0;						
+					}
 			}
-
 		}
 		else 
 		{
@@ -457,7 +473,11 @@ void main(void)
 				Timer_LOW_BATT=50;
 				LED_SIGNAL=~LED_SIGNAL;
 			}
+			Flag_PWM_LED_ENABLE=0;
+			Flag_PWM_BEEP_ENABLE=0;			
 		}
+
+		PWM_output();
 
 		if(Timer_ADC==0)
 		{
@@ -482,7 +502,7 @@ void main(void)
 				delay_ms(1);	//delay 1ms
 				
 				PrintString1("外中断INT");
-				TX1_write2buff(WakeUpSource%10+'0');
+				if(WakeUpSource)TX1_write2buff(WakeUpSource-1%10+'0');
 				PrintString1("  ");
 				
 				WakeUpCnt++;
