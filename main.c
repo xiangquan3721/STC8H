@@ -62,7 +62,7 @@ ADC说明:
 /*************	本地变量声明	**************/
 PWMx_Duty PWMA_Duty;
 u8 WakeUpSource;
-u8 WakeUpCnt;
+u16 WakeUpCnt;
 u16	Vdc,Vadc_led;
 u8 Flag_LED1_ALARM_step,Flag_LED2_ALARM_step,Flag_power_Low;
 u8 Flag_PWM_LED_ENABLE=0,Flag_PWM_BEEP_ENABLE=0;
@@ -166,7 +166,7 @@ void	UART_config(void)
 	COMx_InitStructure.UART_P_SW      = UART1_SW_P30_P31;	//切换端口,   UART1_SW_P30_P31,UART1_SW_P36_P37,UART1_SW_P16_P17,UART1_SW_P43_P44
 	UART_Configuration(UART1, &COMx_InitStructure);		//初始化串口1 UART1,UART2,UART3,UART4
 
-	PrintString1("STC8H8K64U EXINT Wakeup Test Programme!\r\n");	//UART1发送一个字符串
+	PrintString1("STC8H8K64U EXINT Wakeup KingJim!\r\n");	//UART1发送一个字符串
 }
 
 void	PWM_LED_config(void)
@@ -285,8 +285,28 @@ void	ALL_LED_off(void)
 	Timer_LED1_ALARM=0;
 	Timer_LED2_ALARM=0;
 }
-
 /****************  ALL LED熄灭 *****************/
+
+void    PrintNumber(u16 number)
+{
+	u8 i;
+	u8 str[6];
+	str[5] = '\0';
+	for(i=5;i>0;i--)
+	{
+		str[i-1]=number%10+'0';
+		number=number/10;
+	}
+
+	/* 跳过前导的 '0' */
+	for(i = 0; i < 4; i++)
+	{
+		if(str[i] != '0') break;
+	}
+
+	/* 打印从第一个非零字符开始的字符串 */
+	PrintString1((char *)&str[i]);
+}
 void	ADC_Vpower(void)
 {
 	u8 i;
@@ -310,12 +330,8 @@ void	ADC_Vpower(void)
 		Flag_power_Low=TRUE;
 	}
 	#ifdef DEF_ADC_log
-	PrintString1("Vdc:");	
-	TX1_write2buff(Vdc/1000 + '0');
-	TX1_write2buff('.');
-	TX1_write2buff(Vdc%1000/100 + '0');
-	TX1_write2buff(Vdc%100/10 + '0');
-	TX1_write2buff(Vdc%10 + '0');
+	PrintString1("Vdc:");
+	PrintNumber(Vdc);
 	PrintString1("mV\r\n");
 	#endif	
 
@@ -328,11 +344,7 @@ void	ADC_Vpower(void)
 	Vadc_led = (u32)Vdc * (u32)Nadc_led / 1024;	//Ux = Vdc * Nx / 1024;
 	#ifdef DEF_ADC_log
 	PrintString1("Vadc_led:");
-	TX1_write2buff(Vadc_led/1000 + '0');
-	TX1_write2buff('.');
-	TX1_write2buff(Vadc_led%1000/100 + '0');
-	TX1_write2buff(Vadc_led%100/10 + '0');
-	TX1_write2buff(Vadc_led%10 + '0');
+	PrintNumber(Vadc_led);
 	PrintString1("mV\r\n");	
 	#endif
 }
@@ -502,13 +514,11 @@ void main(void)
 				delay_ms(1);	//delay 1ms
 				
 				PrintString1("外中断INT");
-				if(WakeUpSource)TX1_write2buff(WakeUpSource-1%10+'0');
+				if(WakeUpSource)PrintNumber(WakeUpSource-1);
 				PrintString1("  ");
 				
 				WakeUpCnt++;
-				TX1_write2buff(WakeUpCnt/100+'0');
-				TX1_write2buff(WakeUpCnt%100/10+'0');
-				TX1_write2buff(WakeUpCnt%10+'0');
+				PrintNumber(WakeUpCnt);
 				PrintString1("次唤醒\r\n");
 
 				POWER_CE=1;
