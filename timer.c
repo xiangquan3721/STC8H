@@ -19,16 +19,15 @@
 #include	"timer.h"
 #include	"UART.h"
 
-u16 Timer_LED1_ALARM,Timer_LED2_ALARM,Timer_LOW_BATT,Timer_ADC,Timer_PowerON;
+u16 time_run = 0,time_sw1_dete = 0,time_bat_prot = 0;
+u8 low_bat_val = 0;
 /********************* Timer0中断函数************************/
 void timer0_int (void) interrupt TIMER0_VECTOR
 {
-   //P67 = ~P67;
-	if(Timer_LED1_ALARM)Timer_LED1_ALARM--;
-	if(Timer_LED2_ALARM)Timer_LED2_ALARM--;
-	if(Timer_LOW_BATT)Timer_LOW_BATT--;
-	if(Timer_ADC)Timer_ADC--;
-	//if(Timer_PowerON)Timer_PowerON--;
+	if(time_run) time_run--;
+	if(time_sw1_dete) time_sw1_dete--;
+	if(low_bat_val == 1) time_bat_prot++;
+	else time_bat_prot = 0;
 }
 
 /********************* Timer1中断函数************************/

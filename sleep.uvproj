@@ -397,11 +397,6 @@
               <FilePath>.\UART.C</FilePath>
             </File>
             <File>
-              <FileName>Exti.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Exti.c</FilePath>
-            </File>
-            <File>
               <FileName>timer.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\timer.c</FilePath>

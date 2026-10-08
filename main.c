@@ -13,7 +13,6 @@
 #include	"config.h"
 #include	"GPIO.h"
 #include	"UART.h"
-#include	"Exti.h"
 #include	"delay.h"
 #include	"timer.h"
 #include	"adc.h"
@@ -50,23 +49,27 @@ ADC说明:
 
 ******************************************/
 //#define	DEF_ADC_log
-//#define	DEF_PWMout_log
+#define	DEF_PWMout_log
 /*************	本地预定义	**************/
-#define LED_ALARM  P34
-#define LED_SIGNAL P36
-#define BEEP_ALARM P17
-#define POWER_CE   P13
+#define POWER_CTRL   P15
+#define LED_CTRL     P34
+#define Key_SW1      P32
 /*************	本地常量声明	**************/
-
-
+#define DEF_PWM_Period  MAIN_Fosc/2000			//周期时间,   2KHz=2000,1KHz=1000,
+#define LOW_VOLTAGE 1500//1550//1450 //mv
+#define HIGHEST_TEMP 1423  //mv  //LED温度>80℃  80℃时Rt=1.669K，Rp=2.2K
 /*************	本地变量声明	**************/
 PWMx_Duty PWMA_Duty;
-u8 WakeUpSource;
-u16 WakeUpCnt;
-u16	Vdc,Vadc_led;
-u8 Flag_LED1_ALARM_step,Flag_LED2_ALARM_step,Flag_power_Low;
-u8 Flag_PWM_LED_ENABLE=0,Flag_PWM_BEEP_ENABLE=0;
-u8 Flag_PWM_LED_Outputting=0,Flag_PWM_BEEP_Outputting=0;
+u16	Vdc,Vadc_led,Vadc_Power;
+u8 pwm_step_max = 2;
+u8 set_pwm = 0;
+u8 key_sta = 0;
+u8 flag_sw1=0;
+u8 flag_temp_thermal=0;
+u8 flag_bat_low=0;
+u8 flag_power_off=0;
+u8 flag_adc_over=0;
+
 /*************	本地函数声明	**************/
 
 
@@ -101,9 +104,16 @@ void	GPIO_config(void)
 	GPIO_Inilize(GPIO_P5,&GPIO_InitStructure);	//初始化
 	
 	//AD口设置为输入口
-	GPIO_InitStructure.Pin  = GPIO_Pin_1;		//指定要初始化的IO, GPIO_Pin_0 ~ GPIO_Pin_7
+	GPIO_InitStructure.Pin  = GPIO_Pin_3;		//指定要初始化的IO, GPIO_Pin_0 ~ GPIO_Pin_7
 	GPIO_InitStructure.Mode = GPIO_HighZ;	//指定IO的输入或输出方式,GPIO_PullUp,GPIO_HighZ,GPIO_OUT_OD,GPIO_OUT_PP
-	GPIO_Inilize(GPIO_P1,&GPIO_InitStructure);	//初始化	
+	GPIO_Inilize(GPIO_P3,&GPIO_InitStructure);	//初始化
+	//AD口设置为输入口
+	GPIO_InitStructure.Pin  = GPIO_Pin_5;		//指定要初始化的IO, GPIO_Pin_0 ~ GPIO_Pin_7
+	GPIO_InitStructure.Mode = GPIO_HighZ;	//指定IO的输入或输出方式,GPIO_PullUp,GPIO_HighZ,GPIO_OUT_OD,GPIO_OUT_PP
+	GPIO_Inilize(GPIO_P3,&GPIO_InitStructure);	//初始化	
+	
+	POWER_CTRL=0;	//电源控制IO口设置为低电平, 1=上电, 0=断电
+	LED_CTRL=0;		//LED控制IO口设置为低电平, 1=点亮, 0=熄灭
 }
 
 /************************ 定时器配置 ****************************/
@@ -115,7 +125,7 @@ void	Timer_config(void)
 	TIM_InitStructure.TIM_Interrupt = ENABLE;					//中断是否允许,   ENABLE或DISABLE
 	TIM_InitStructure.TIM_ClkSource = TIM_CLOCK_1T;		//指定时钟源,     TIM_CLOCK_1T,TIM_CLOCK_12T,TIM_CLOCK_Ext
 	TIM_InitStructure.TIM_ClkOut    = DISABLE;				//是否输出高速脉冲, ENABLE或DISABLE
-	TIM_InitStructure.TIM_Value     = 65536UL - (MAIN_Fosc / 100UL);		//初值,  1000Hz=1000；100Hz=100
+	TIM_InitStructure.TIM_Value     = 65536UL - (MAIN_Fosc / 1000UL);		//初值,  1000Hz=1000；100Hz=100
 	TIM_InitStructure.TIM_Run       = ENABLE;					//是否初始化后启动定时器, ENABLE或DISABLE
 	Timer_Inilize(Timer0,&TIM_InitStructure);					//初始化Timer0	  Timer0,Timer1,Timer2,Timer3,Timer4
 }
@@ -136,22 +146,6 @@ void	ADC_config(void)
 	ADC_PowerControl(ENABLE);							//单独的ADC电源操作函数, ENABLE或DISABLE
 }
 
-/******************** INT配置 ********************/
-void	Exti_config(void)
-{
-	EXTI_InitTypeDef	Exti_InitStructure;							//结构定义
-
-	Exti_InitStructure.EXTI_Interrupt = ENABLE;				//中断使能,   ENABLE或DISABLE
-	Exti_InitStructure.EXTI_Mode      = EXT_MODE_Fall;//中断模式,   EXT_MODE_RiseFall,EXT_MODE_Fall
-	Exti_InitStructure.EXTI_Priority  = Priority_0;		//指定中断优先级(低到高) Priority_0,Priority_1,Priority_2,Priority_3
-	Ext_Inilize(EXT_INT0,&Exti_InitStructure);				//初始化
-
-	// Exti_InitStructure.EXTI_Interrupt = ENABLE;				//中断使能,   ENABLE或DISABLE
-	// Exti_InitStructure.EXTI_Mode      = EXT_MODE_Fall;//中断模式,   EXT_MODE_RiseFall,EXT_MODE_Fall
-	// Exti_InitStructure.EXTI_Priority  = Priority_0;		//指定中断优先级(低到高) Priority_0,Priority_1,Priority_2,Priority_3
-	// Ext_Inilize(EXT_INT1,&Exti_InitStructure);				//初始化
-}
-
 /****************  串口初始化函数 *****************/
 void	UART_config(void)
 {
@@ -166,7 +160,7 @@ void	UART_config(void)
 	COMx_InitStructure.UART_P_SW      = UART1_SW_P30_P31;	//切换端口,   UART1_SW_P30_P31,UART1_SW_P36_P37,UART1_SW_P16_P17,UART1_SW_P43_P44
 	UART_Configuration(UART1, &COMx_InitStructure);		//初始化串口1 UART1,UART2,UART3,UART4
 
-	PrintString1("STC8H8K64U EXINT Wakeup KingJim!\r\n");	//UART1发送一个字符串
+	PrintString1("STC8H1K08 FlashLight_Pro KingJim!\r\n");	//UART1发送一个字符串
 }
 
 void	PWM_LED_config(void)
@@ -177,8 +171,8 @@ void	PWM_LED_config(void)
 
 	PWMx_InitStructure.PWM4_SetPriority  = Priority_0;			//指定中断优先级(低到高) Priority_0,Priority_1,Priority_2,Priority_3
 	
-	PWMx_InitStructure.PWM_Period   = MAIN_Fosc/2000;			//周期时间,   2KHz=2000,1KHz=1000,
-	PWMx_InitStructure.PWM4_Duty    = PWMx_InitStructure.PWM_Period/2;	  //PWM4占空比时间, 0~Period
+	PWMx_InitStructure.PWM_Period   = DEF_PWM_Period;			//周期时间,   2KHz=2000,1KHz=1000,
+	PWMx_InitStructure.PWM4_Duty    = DEF_PWM_Period/10*8;	  //PWM4占空比时间, 0~Period
 	PWMx_InitStructure.PWM_DeadTime = 0;								//死区发生器设置, 0~255
 	
 	PWMx_InitStructure.PWM_EnoSelect   = ENO4P;	//输出通道选择,	ENO1P,ENO1N,ENO2P,ENO2N,ENO3P,ENO3N,ENO4P,ENO4N / ENO5P,ENO6P,ENO7P,ENO8P
@@ -194,7 +188,7 @@ void	PWM_LED_config(void)
 	PWMx_InitStructure.PWM_CEN_Enable   = ENABLE;				//使能计数器, ENABLE,DISABLE
 	PWM_Configuration(PWMA, &PWMx_InitStructure);				//初始化PWM,  PWMA,PWMB
 	
-	PWMA_Duty.PWM4_Duty=PWMx_InitStructure.PWM_Period/2;
+	PWMA_Duty.PWM4_Duty=DEF_PWM_Period/10*8;
 	UpdatePwm(PWMA, &PWMA_Duty);
 }
  void PWM_LED_OFF(void)
@@ -222,70 +216,6 @@ void	PWM_LED_config(void)
 	PWMx_InitStructure.PWM_CEN_Enable   = DISABLE;				//使能计数器, ENABLE,DISABLE
 	PWM_Configuration(PWMA, &PWMx_InitStructure);				//初始化PWM,  PWMA,PWMB
  }
- void	PWM_BEEP_config(void)
-{
-	PWMx_InitDefine		PWMx_InitStructure;
-	
-	PWMx_InitStructure.PWM5_Mode    =	CCMRn_PWM_MODE1;	//模式,		CCMRn_FREEZE,CCMRn_MATCH_VALID,CCMRn_MATCH_INVALID,CCMRn_ROLLOVER,CCMRn_FORCE_INVALID,CCMRn_FORCE_VALID,CCMRn_PWM_MODE1,CCMRn_PWM_MODE2
-
-	PWMx_InitStructure.PWM5_SetPriority  = Priority_0;			//指定中断优先级(低到高) Priority_0,Priority_1,Priority_2,Priority_3
-	
-	PWMx_InitStructure.PWM_Period   = MAIN_Fosc/2000;			//周期时间,   2KHz=2000,1KHz=1000,
-	PWMx_InitStructure.PWM5_Duty    = PWMx_InitStructure.PWM_Period/2;	  //PWM5占空比时间, 0~Period
-	PWMx_InitStructure.PWM_DeadTime = 0;								//死区发生器设置, 0~255
-	
-	PWMx_InitStructure.PWM_EnoSelect   = ENO5P;	//输出通道选择,	ENO1P,ENO1N,ENO2P,ENO2N,ENO3P,ENO3N,ENO4P,ENO4N / ENO5P,ENO6P,ENO7P,ENO8P
-	PWMx_InitStructure.PWM_PS_SW       = PWM5_SW_P17;	//切换端口,		PWM1_SW_P10_P11,PWM1_SW_P20_P21,PWM1_SW_P60_P61
-															//			   PWM2_SW_P12_P13,PWM2_SW_P22_P23,PWM2_SW_P62_P63
-															//			   PWM3_SW_P14_P15,PWM3_SW_P24_P25,PWM3_SW_P64_P65
-															//			   PWM4_SW_P16_P17,PWM4_SW_P26_P27,PWM4_SW_P66_P67,PWM4_SW_P34_P33
-
-	PWMx_InitStructure.PWM_CC5Enable   = ENABLE;				//开启PWM5P输入捕获/比较输出,  ENABLE,DISABLE
-	
-	PWMx_InitStructure.PWM_MainOutEnable= ENABLE;				//主输出使能, ENABLE,DISABLE
-	PWMx_InitStructure.PWM_CEN_Enable   = ENABLE;				//使能计数器, ENABLE,DISABLE
-	PWM_Configuration(PWMB, &PWMx_InitStructure);				//初始化PWM,  PWMA,PWMB
-	
-	PWMA_Duty.PWM5_Duty=PWMx_InitStructure.PWM_Period/2;
-	UpdatePwm(PWMB, &PWMA_Duty); 
-}
- void PWM_BEEP_OFF(void)
- {
-	PWMx_InitDefine		PWMx_InitStructure;
-	
-	PWMx_InitStructure.PWM5_Mode    =	CCMRn_FREEZE;	//模式,		CCMRn_FREEZE,CCMRn_MATCH_VALID,CCMRn_MATCH_INVALID,CCMRn_ROLLOVER,CCMRn_FORCE_INVALID,CCMRn_FORCE_VALID,CCMRn_PWM_MODE1,CCMRn_PWM_MODE2
-
-	PWMx_InitStructure.PWM5_SetPriority  = Priority_0;			//指定中断优先级(低到高) Priority_0,Priority_1,Priority_2,Priority_3
-	
-	PWMx_InitStructure.PWM_Period   = 0;							//周期时间,   0~65535
-	PWMx_InitStructure.PWM5_Duty    = 0;	//PWM5占空比时间, 0~Period
-	PWMx_InitStructure.PWM_DeadTime = 0;								//死区发生器设置, 0~255
-	
-	PWMx_InitStructure.PWM_EnoSelect   = 0;	//输出通道选择,	ENO1P,ENO1N,ENO2P,ENO2N,ENO3P,ENO3N,ENO4P,ENO4N / ENO5P,ENO6P,ENO7P,ENO8P
-	PWMx_InitStructure.PWM_PS_SW       = 0;	//切换端口,		PWM1_SW_P10_P11,PWM1_SW_P20_P21,PWM1_SW_P60_P61
-															//			   PWM2_SW_P12_P13,PWM2_SW_P22_P23,PWM2_SW_P62_P63
-															//			   PWM3_SW_P14_P15,PWM3_SW_P24_P25,PWM3_SW_P64_P65
-															//			   PWM4_SW_P16_P17,PWM4_SW_P26_P27,PWM4_SW_P66_P67,PWM4_SW_P34_P33
-
-	PWMx_InitStructure.PWM_CC5Enable   = DISABLE;				//开启PWM5P输入捕获/比较输出,  ENABLE,DISABLE
-	
-	PWMx_InitStructure.PWM_MainOutEnable= DISABLE;				//主输出使能, ENABLE,DISABLE
-	PWMx_InitStructure.PWM_CEN_Enable   = DISABLE;				//使能计数器, ENABLE,DISABLE
-	PWM_Configuration(PWMB, &PWMx_InitStructure);				//初始化PWM,  PWMA,PWMB
- }
-/****************  ALL LED熄灭 *****************/
-void	ALL_LED_off(void)
-{
-	LED_ALARM=0;   //低电平LED熄灭
-	LED_SIGNAL=1;  //高电平LED熄灭
-	BEEP_ALARM=0;   //低电平蜂鸣器熄灭
-	POWER_CE=0;  //低电平关闭电源
-	Flag_LED1_ALARM_step=FALSE;
-	Flag_LED2_ALARM_step=FALSE;
-	Timer_LED1_ALARM=0;
-	Timer_LED2_ALARM=0;
-}
-/****************  ALL LED熄灭 *****************/
 
 void    PrintNumber(u16 number)
 {
@@ -319,16 +249,6 @@ void	ADC_Vpower(void)
 	}
 	Nref = Sum_Nx/5;
 	Vdc = (u32)1190 * (u32)1024 / Nref;			//Ux = Vref * Nx / Nref;    Vref = 1190mV
-	if(Vdc>3200)
-	{
-		//LED_LOW_BATT=1;
-		Flag_power_Low=FALSE;
-	}
-	else 
-	{
-		//LED_LOW_BATT=0;
-		Flag_power_Low=TRUE;
-	}
 	#ifdef DEF_ADC_log
 	PrintString1("Vdc:");
 	PrintNumber(Vdc);
@@ -338,7 +258,7 @@ void	ADC_Vpower(void)
 	Sum_Nx=0;
 	for(i=0;i<5;i++)
 	{
-		Sum_Nx += Get_ADCResult(1);	//读LED的温度, 读1通道
+		Sum_Nx += Get_ADCResult(13);	//读LED的温度, 读1通道
 	}
 	Nadc_led = Sum_Nx/5;
 	Vadc_led = (u32)Vdc * (u32)Nadc_led / 1024;	//Ux = Vdc * Nx / 1024;
@@ -347,187 +267,207 @@ void	ADC_Vpower(void)
 	PrintNumber(Vadc_led);
 	PrintString1("mV\r\n");	
 	#endif
+
+	Sum_Nx=0;
+	for(i=0;i<5;i++)
+	{
+		Sum_Nx += Get_ADCResult(11);	//读电池电压, 读1通道
+	}
+	Nadc_led = Sum_Nx/5;
+	Vadc_Power = (u32)Vdc * (u32)Nadc_led / 1024;	//Ux = Vdc * Nx / 1024;
+	#ifdef DEF_ADC_log
+	PrintString1("Vadc_Power:");
+	PrintNumber(Vadc_Power);
+	PrintString1("mV\r\n");	
+	#endif	
+
+	flag_adc_over = 1;
+	if(Vadc_Power < LOW_VOLTAGE) low_bat_val = 1;
+    else low_bat_val = 0;
+	if(Vadc_led < HIGHEST_TEMP) flag_temp_thermal = 1;
+	else flag_temp_thermal = 0;		
 }
 
-void PWM_output(void)
+void LED_PWM_SET(u8 pwm)
 {
-	if(Flag_PWM_LED_ENABLE)
-	{
-		if(Flag_PWM_LED_Outputting==0)
-		{
-			Flag_PWM_LED_Outputting=1;
-			PWM_LED_config();
-			#ifdef DEF_PWMout_log
-			PrintString1("LED ON\r\n");
-			#endif
-		}
-	}
-	else 
-	{
-		if(Flag_PWM_LED_Outputting==1)
-		{
-			Flag_PWM_LED_Outputting=0;
-			PWM_LED_OFF();
-			#ifdef DEF_PWMout_log
-			PrintString1("LED OFF\r\n");
-			#endif
-			LED_ALARM=0;
-		}
-	}
-	if(Flag_PWM_BEEP_ENABLE)
-	{
-		if(Flag_PWM_BEEP_Outputting==0)
-		{
-			Flag_PWM_BEEP_Outputting=1;
-			PWM_BEEP_config();
-			#ifdef DEF_PWMout_log
-			PrintString1("BEEP ON\r\n");
-			#endif
-		}
-	}
-	else 
-	{
-		if(Flag_PWM_BEEP_Outputting==1)
-		{
-			Flag_PWM_BEEP_Outputting=0;
-			PWM_BEEP_OFF();
-			#ifdef DEF_PWMout_log
-			PrintString1("BEEP OFF\r\n");
-			#endif
-			BEEP_ALARM=0;
-		}
-	}
+    switch(pwm)
+    {
+        case 0: //85%
+			PWMA_Duty.PWM4_Duty=DEF_PWM_Period/10*8;
+			UpdatePwm(PWMA, &PWMA_Duty);
+			break;
+		case 1: //50%
+			PWMA_Duty.PWM4_Duty=DEF_PWM_Period/2;
+			UpdatePwm(PWMA, &PWMA_Duty);
+            break;
+        case 3: //30%
+			PWMA_Duty.PWM4_Duty=DEF_PWM_Period/10*3;
+			UpdatePwm(PWMA, &PWMA_Duty);
+            break;
+        default:
+			PWMA_Duty.PWM4_Duty=DEF_PWM_Period/2;
+			UpdatePwm(PWMA, &PWMA_Duty);
+            break;
+    }
+	#ifdef DEF_PWMout_log
+	PrintString1("PWM:");
+	PrintNumber(pwm);
+	PrintString1("\r\n");
+	#endif	
+}
+
+void LED_PWM_ON(void)
+{
+	PWM_LED_config();
+	#ifdef DEF_PWMout_log
+	PrintString1("LED ON\r\n");
+	#endif
+}
+
+void LED_PWM_OFF(void)
+{
+	PWM_LED_OFF();
+	#ifdef DEF_PWMout_log
+	PrintString1("LED OFF\r\n");
+	#endif
+    LED_CTRL=0;
+}
+
+u8 Key_Sw1_Scan(void)
+{
+    if(Key_SW1 == 0 && key_sta == 0)
+    {
+        key_sta = 1;
+        delay_ms(20);
+        if(Key_SW1 == 0)       return 1;
+    }
+    else if(Key_SW1 == 1)
+    {
+        key_sta = 0;
+    }
+    return 0;
+}
+u8 sw_cnt = 0;
+void key_sw1_dete(void)
+{
+    if(Key_SW1 == 0 && time_sw1_dete == 0)
+    {
+        time_sw1_dete = 100;
+        if(Key_SW1 == 0)
+        {
+            sw_cnt++;
+            if(sw_cnt >= 7)
+            {
+                sw_cnt = 0;
+                flag_sw1 = 1;
+                LED_PWM_OFF();
+                POWER_CTRL=0;
+                flag_power_off = 1;
+            }
+            else flag_sw1 = 0;
+        }
+    }
+    else if(Key_SW1 == 1)
+    {
+        delay_ms(20);
+        if(Key_SW1 == 1)
+        {
+            sw_cnt = 0;
+            flag_sw1 = 0;
+        }
+    }
+}
+u16 is = 0;
+u8 ix = 0;
+u8 iy = 0;
+void protect_deal(void)
+{
+    if(flag_adc_over)
+    {
+        flag_adc_over = 0;
+        if(flag_temp_thermal == 1)
+        {
+            LED_PWM_SET(3);
+            is++;
+            if(is++ >= 60)
+            {
+                is = 0;
+                LED_PWM_OFF();
+                POWER_CTRL=0;
+            }
+        }else is = 0;
+    }
+    if(low_bat_val == 1 && time_bat_prot >= 500) //500ms闪灯
+    {
+        time_bat_prot = 0;
+        ix++;
+        if(ix%2 == 1)
+        {
+            LED_PWM_OFF();
+            flag_bat_low = 1;
+        }
+        else
+        {
+            LED_PWM_SET(3);
+            LED_PWM_ON();
+        }
+        if(ix >= 120)
+        {
+            LED_PWM_OFF();
+            POWER_CTRL=0;
+        }
+    }
+
+    if(flag_temp_thermal == 0 && low_bat_val == 0)
+    {
+        if(low_bat_val == 0) pwm_step_max = 2;
+        if(flag_bat_low == 1)
+        {
+            is = 0; ix = 0; iy = 0;
+            flag_bat_low = 0;
+            if(low_bat_val == 0) LED_PWM_SET(set_pwm);
+            LED_PWM_ON();
+        }
+    }
 }
 /******************** 主函数***********************/
+u8 sw1 = 0;
+u8 m_run = 0;
 void main(void)
 {
-	Timer_PowerON=1200;
-	GPIO_config();
-	ALL_LED_off();	
+	WDT_config();
+	GPIO_config();	
 	UART_config();
 	Timer_config();
 	ADC_config();
 //	Exti_config();
 	EA  = 1;		//Enable all interrupt
-	POWER_CE=1;
-	delay_ms(100);	
-    ADC_Vpower();
-	WDT_config();		
-	while(1)
-	{
-		WDT_Clear();    // 喂狗
-		if(Flag_power_Low==FALSE)
-		{
-			if(Timer_PowerON==0)
-			{
-					if(!INT0)
-					{
-						if(Timer_LED2_ALARM==0)PrintString1("INT0\r\n");
-						switch(Flag_LED2_ALARM_step)
-						{
-							case 0:
-									PrintString1("step0 ");
-									Timer_LED2_ALARM=200;
-									Flag_LED2_ALARM_step=3;  //=3或=1
-									break;
-							case 1:
-									if(Timer_LED2_ALARM==0){PrintString1("step1 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=2;}
-									break;
-							case 2:
-									if(Timer_LED2_ALARM==0){PrintString1("step2 ");Timer_LED2_ALARM=100;Flag_LED2_ALARM_step=3;}
-							case 3:
-									if(Timer_LED2_ALARM==0){PrintString1("step3 ");Timer_LED2_ALARM=100;}							
-									break;							
-							default:
-									break;					
-						}
-					}
-					else if(Timer_LED2_ALARM<5)
-						Timer_LED2_ALARM=0;
-	
-					if(Flag_LED2_ALARM_step!=2)
-					{
-						if((Timer_LED2_ALARM<200)&&(Timer_LED2_ALARM>155)||(Timer_LED2_ALARM<100)&&(Timer_LED2_ALARM>55))
-						{
-							if(Vadc_led<1294)  //LED温度>80℃  80℃时Rt=1.669K，Rp=2.2K
-								Flag_PWM_LED_ENABLE=0;
-							else
-							{
-								Flag_PWM_LED_ENABLE=1;
-								Flag_PWM_BEEP_ENABLE=0;
-							}
-						}
-						else if((Timer_LED2_ALARM<150)&&(Timer_LED2_ALARM>105)||(Timer_LED2_ALARM<50)&&(Timer_LED2_ALARM>5))
-						{   
-							Flag_PWM_LED_ENABLE=0;
-							Flag_PWM_BEEP_ENABLE=1;							
-						}
-						else 
-						{   
-							Flag_PWM_LED_ENABLE=0;
-							Flag_PWM_BEEP_ENABLE=0;							
-						}
-						if(INT0)LED_SIGNAL=1;
-						else LED_SIGNAL=0;
-					}
-					else 
-					{
-						LED_SIGNAL=1;
-						Flag_PWM_LED_ENABLE=0;
-						Flag_PWM_BEEP_ENABLE=0;						
-					}
-			}
-		}
-		else 
-		{
-			if(Timer_LOW_BATT==0)
-			{
-				Timer_LOW_BATT=50;
-				LED_SIGNAL=~LED_SIGNAL;
-			}
-			Flag_PWM_LED_ENABLE=0;
-			Flag_PWM_BEEP_ENABLE=0;			
-		}
-
-		PWM_output();
-
-		if(Timer_ADC==0)
-		{
-			Timer_ADC=10;
-			ADC_Vpower();
-		}		
-		
-		if(((INT0==1)||(Timer_PowerON!=0))&&(Flag_power_Low==FALSE)&&(Timer_LED2_ALARM==0)&&(Timer_LED1_ALARM==0)) //等待外中断为高电平
-		{
-			delay_ms(10);	//delay 10ms
-			if((INT0==1)||(Timer_PowerON!=0)) //等待外中断为高电平			
-			{
-				Timer_PowerON=0;
-				PrintString1("SLEEP  ");
-				delay_ms(10);	//delay 10ms
-				Exti_config();
-				WakeUpSource = 0;
-			
-				ALL_LED_off();
-				MCU_POWER_DOWN();	//Sleep
-				_nop_();_nop_();_nop_();
-				delay_ms(1);	//delay 1ms
-				
-				PrintString1("外中断INT");
-				if(WakeUpSource)PrintNumber(WakeUpSource-1);
-				PrintString1("  ");
-				
-				WakeUpCnt++;
-				PrintNumber(WakeUpCnt);
-				PrintString1("次唤醒\r\n");
-
-				POWER_CE=1;
-				delay_ms(20);
-				ADC_Vpower();
-			}
-		}
-
-	}
-
+    if(Key_Sw1_Scan() == 1)
+    {
+		time_run = 700;
+		while(time_run) WDT_Clear();
+		POWER_CTRL=1;
+		m_run = 1;
+		LED_PWM_ON();
+		ADC_Vpower();
+    }
+    while (m_run)
+    {
+        WDT_Clear();    // 喂狗
+        sw1 = Key_Sw1_Scan();
+        if(sw1 == 1 && low_bat_val == 0)
+        {		
+			set_pwm++;
+			if(set_pwm >= pwm_step_max) set_pwm = 0;
+			LED_PWM_SET(set_pwm);
+        }
+        key_sw1_dete();
+        if(flag_power_off == 0) protect_deal();
+        if(flag_power_off == 0 && time_run == 0)
+        {
+            time_run = 1000;
+            ADC_Vpower();
+        }
+    }
 }
 
