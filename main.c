@@ -283,7 +283,7 @@ void	ADC_Vpower(void)
 
 	flag_adc_over = 1;
 	if(Vadc_Power < LOW_VOLTAGE) low_bat_val = 1;
-    else low_bat_val = 0;
+    else if(Vadc_Power > LOW_VOLTAGE+150) low_bat_val = 0;
 	if(Vadc_led < HIGHEST_TEMP) flag_temp_thermal = 1;
 	else flag_temp_thermal = 0;		
 }
