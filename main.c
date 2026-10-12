@@ -389,7 +389,7 @@ void protect_deal(void)
         {
             LED_PWM_SET(3);
             is++;
-            if(is++ >= 60)
+            if(is >= 60)
             {
                 is = 0;
                 LED_PWM_OFF();
@@ -408,8 +408,8 @@ void protect_deal(void)
         }
         else
         {
+            LED_PWM_ON();			
             LED_PWM_SET(3);
-            LED_PWM_ON();
         }
         if(ix >= 120)
         {
@@ -425,8 +425,8 @@ void protect_deal(void)
         {
             is = 0; ix = 0; iy = 0;
             flag_bat_low = 0;
-            if(low_bat_val == 0) LED_PWM_SET(set_pwm);
             LED_PWM_ON();
+            if(low_bat_val == 0) LED_PWM_SET(set_pwm);			
         }
     }
 }
