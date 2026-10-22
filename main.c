@@ -55,8 +55,9 @@ ADC说明:
 #define LED_CTRL     P34
 #define Key_SW1      P32
 /*************	本地常量声明	**************/
-#define DEF_PWM_Period  MAIN_Fosc/2000			//周期时间,   2KHz=2000,1KHz=1000,
-#define LOW_VOLTAGE 1500//1550//1450 //mv
+#define DEF_PWM_Period  MAIN_Fosc/1000			//周期时间,   2KHz=2000,1KHz=1000,
+#define LOW_VOLTAGE 1428 //mv  1428mv*2.8+200mv=4000mv,200mv是电池到取样之间的硬件电路损耗
+#define LOW_VOLTAGE_MIN 1215 //mv  1215mv*2.8+200mv=3600mv,200mv是电池到取样之间的硬件电路损耗
 #define HIGHEST_TEMP 1423  //mv  //LED温度>80℃  80℃时Rt=1.669K，Rp=2.2K
 /*************	本地变量声明	**************/
 PWMx_Duty PWMA_Duty;
@@ -69,6 +70,7 @@ u8 flag_temp_thermal=0;
 u8 flag_bat_low=0;
 u8 flag_power_off=0;
 u8 flag_adc_over=0;
+u8 flag_low_bat_min=0;
 
 /*************	本地函数声明	**************/
 
@@ -282,7 +284,11 @@ void	ADC_Vpower(void)
 	#endif	
 
 	flag_adc_over = 1;
-	if(Vadc_Power < LOW_VOLTAGE) low_bat_val = 1;
+	if(Vadc_Power < LOW_VOLTAGE) 
+	{
+		low_bat_val = 1;
+		if(Vadc_Power < LOW_VOLTAGE_MIN) flag_low_bat_min = 1;
+	}
     else if(Vadc_Power > LOW_VOLTAGE+150) low_bat_val = 0;
 	if(Vadc_led < HIGHEST_TEMP) flag_temp_thermal = 1;
 	else flag_temp_thermal = 0;		
@@ -411,7 +417,7 @@ void protect_deal(void)
             LED_PWM_ON();			
             LED_PWM_SET(3);
         }
-        if(ix >= 120)
+        if(flag_low_bat_min==1)//if(ix >= 120)
         {
             LED_PWM_OFF();
             POWER_CTRL=0;
