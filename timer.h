@@ -42,7 +42,7 @@ typedef struct
 } TIM_InitTypeDef;
 
 extern u16 time_run,time_sw1_dete,time_bat_prot;
-extern u8 low_bat_val;
+extern u8 low_bat_val,TIME_Power_jion;
 
 u8	Timer_Inilize(u8 TIM, TIM_InitTypeDef *TIMx);
 

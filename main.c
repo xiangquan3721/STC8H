@@ -294,6 +294,7 @@ void	ADC_Vpower(void)
 	else flag_temp_thermal = 0;		
 }
 
+u8 PWM_log=0xff;
 void LED_PWM_SET(u8 pwm)
 {
     switch(pwm)
@@ -316,9 +317,13 @@ void LED_PWM_SET(u8 pwm)
             break;
     }
 	#ifdef DEF_PWMout_log
-	PrintString1("PWM:");
-	PrintNumber(pwm);
-	PrintString1("\r\n");
+	if(PWM_log != pwm)
+	{
+		PWM_log = pwm;
+		PrintString1("PWM:");
+		PrintNumber(pwm);
+		PrintString1("\r\n");
+	}
 	#endif	
 }
 
@@ -368,6 +373,9 @@ void key_sw1_dete(void)
                 flag_sw1 = 1;
                 LED_PWM_OFF();
                 POWER_CTRL=0;
+				#ifdef DEF_PWMout_log
+				PrintString1("Power OFF\r\n");
+				#endif				
                 flag_power_off = 1;
             }
             else flag_sw1 = 0;
@@ -409,12 +417,17 @@ void protect_deal(void)
         ix++;
         if(ix%2 == 1)
         {
-            LED_PWM_OFF();
+			PWM_LED_OFF();
+			LED_CTRL=0;
+			#ifdef DEF_PWMout_log
+			if(flag_bat_low==0)
+			   PrintString1("low voltage\r\n");
+			#endif			
             flag_bat_low = 1;
         }
         else
         {
-            LED_PWM_ON();			
+            PWM_LED_config();			
             LED_PWM_SET(3);
         }
         if(flag_low_bat_min==1)//if(ix >= 120)
@@ -432,7 +445,10 @@ void protect_deal(void)
             is = 0; ix = 0; iy = 0;
             flag_bat_low = 0;
             LED_PWM_ON();
-            if(low_bat_val == 0) LED_PWM_SET(set_pwm);			
+            if(low_bat_val == 0) LED_PWM_SET(set_pwm);
+			#ifdef DEF_PWMout_log
+			PrintString1("return to normal\r\n");
+			#endif						
         }
     }
 }
@@ -452,10 +468,19 @@ void main(void)
     {
 		time_run = 700;
 		while(time_run) WDT_Clear();
-		POWER_CTRL=1;
-		m_run = 1;
+		POWER_CTRL=1;		
 		LED_PWM_ON();
 		ADC_Vpower();
+		TIME_Power_jion=50;
+		while(TIME_Power_jion)
+		{
+			WDT_Clear();
+			if(Key_SW1 == 0)TIME_Power_jion=50;
+		}
+		m_run = 1;
+		#ifdef DEF_PWMout_log
+		PrintString1("Power ON\r\n");
+		#endif			
     }
     while (m_run)
     {

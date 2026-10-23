@@ -20,11 +20,12 @@
 #include	"UART.h"
 
 u16 time_run = 0,time_sw1_dete = 0,time_bat_prot = 0;
-u8 low_bat_val = 0;
+u8 low_bat_val = 0,TIME_Power_jion;
 /********************* Timer0ÖÐ¶Ïº¯Êý************************/
 void timer0_int (void) interrupt TIMER0_VECTOR
 {
 	if(time_run) time_run--;
+	if(TIME_Power_jion) TIME_Power_jion--;
 	if(time_sw1_dete) time_sw1_dete--;
 	if(low_bat_val == 1) time_bat_prot++;
 	else time_bat_prot = 0;
