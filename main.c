@@ -57,7 +57,7 @@ ADC说明:
 /*************	本地常量声明	**************/
 #define DEF_PWM_Period  MAIN_Fosc/1000			//周期时间,   2KHz=2000,1KHz=1000,
 #define LOW_VOLTAGE 1321 //mv  1321v*2.8+200mv=3900mv,200mv是电池到取样之间的硬件电路损耗
-#define LOW_VOLTAGE_MIN 1215 //mv  1215mv*2.8+200mv=3600mv,200mv是电池到取样之间的硬件电路损耗
+#define LOW_VOLTAGE_MIN 1250 //mv  1250mv*2.8+200mv=3700mv,200mv是电池到取样之间的硬件电路损耗
 #define HIGHEST_TEMP 1423  //mv  //LED温度>80℃  80℃时Rt=1.669K，Rp=2.2K
 /*************	本地变量声明	**************/
 PWMx_Duty PWMA_Duty;
