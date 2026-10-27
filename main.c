@@ -56,7 +56,7 @@ ADC说明:
 #define Key_SW1      P32
 /*************	本地常量声明	**************/
 #define DEF_PWM_Period  MAIN_Fosc/1000			//周期时间,   2KHz=2000,1KHz=1000,
-#define LOW_VOLTAGE 1428 //mv  1428mv*2.8+200mv=4000mv,200mv是电池到取样之间的硬件电路损耗
+#define LOW_VOLTAGE 1321 //mv  1321v*2.8+200mv=3900mv,200mv是电池到取样之间的硬件电路损耗
 #define LOW_VOLTAGE_MIN 1215 //mv  1215mv*2.8+200mv=3600mv,200mv是电池到取样之间的硬件电路损耗
 #define HIGHEST_TEMP 1423  //mv  //LED温度>80℃  80℃时Rt=1.669K，Rp=2.2K
 /*************	本地变量声明	**************/
@@ -392,7 +392,7 @@ void key_sw1_dete(void)
     }
 }
 u16 is = 0;
-u8 ix = 0;
+u16 ix = 0;
 u8 iy = 0;
 void protect_deal(void)
 {
@@ -411,11 +411,12 @@ void protect_deal(void)
             }
         }else is = 0;
     }
-    if(low_bat_val == 1 && time_bat_prot >= 500) //500ms闪灯
+    if(low_bat_val == 1 && time_bat_prot >= 200) //200ms闪灯
     {
         time_bat_prot = 0;
         ix++;
-        if(ix%2 == 1)
+		if(ix>=300)ix=0; //1min 
+        if((ix%2 == 1)&&(ix<=6))
         {
 			PWM_LED_OFF();
 			LED_CTRL=0;
