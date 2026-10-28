@@ -311,6 +311,10 @@ void LED_PWM_SET(u8 pwm)
 			PWMA_Duty.PWM4_Duty=DEF_PWM_Period/10*3;
 			UpdatePwm(PWMA, &PWMA_Duty);
             break;
+        case 10: //10%
+			PWMA_Duty.PWM4_Duty=DEF_PWM_Period/10;
+			UpdatePwm(PWMA, &PWMA_Duty);
+            break;			
         default:
 			PWMA_Duty.PWM4_Duty=DEF_PWM_Period/2;
 			UpdatePwm(PWMA, &PWMA_Duty);
@@ -392,7 +396,7 @@ void key_sw1_dete(void)
     }
 }
 u16 is = 0;
-u16 ix = 0;
+u16 ix = 0,iHour=0;
 u8 iy = 0;
 void protect_deal(void)
 {
@@ -415,8 +419,8 @@ void protect_deal(void)
     {
         time_bat_prot = 0;
         ix++;
-		if(ix>=300)ix=0; //1min 
-        if((ix%2 == 1)&&(ix<=6))
+		if(ix>=300){ix=0;iHour++;} //1Minute 
+        if((ix%2 == 1)&&(ix<=10))
         {
 			PWM_LED_OFF();
 			LED_CTRL=0;
@@ -429,9 +433,9 @@ void protect_deal(void)
         else
         {
             PWM_LED_config();			
-            LED_PWM_SET(3);
+            LED_PWM_SET(10);
         }
-        if(flag_low_bat_min==1)//if(ix >= 120)
+        if(iHour >= 1440) //24Hours*60Minutes=1440
         {
             LED_PWM_OFF();
             POWER_CTRL=0;
@@ -443,7 +447,7 @@ void protect_deal(void)
         if(low_bat_val == 0) pwm_step_max = 2;
         if(flag_bat_low == 1)
         {
-            is = 0; ix = 0; iy = 0;
+            is = 0; ix = 0; iy = 0;iHour=0;
             flag_bat_low = 0;
             LED_PWM_ON();
             if(low_bat_val == 0) LED_PWM_SET(set_pwm);
